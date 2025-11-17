@@ -1,0 +1,8 @@
+Tests: compilation-test
+Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev
+
+Tests: installation-test
+Depends: @
+
+Tests: pkg-config-test
+Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev

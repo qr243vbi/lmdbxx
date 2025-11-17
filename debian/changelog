@@ -1,0 +1,14 @@
+lmdbxx (1.0.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * Update to hoytech/lmdbxx fork with C++17 support
+  * Update debian packaging to Policy 4.7.2.0
+  * Switch to debhelper-compat 13
+
+ -- Ruslan Dautov <r.dautoff2016@yandex.ru>  Mon, 17 Nov 2025 20:15:00 +0300
+
+lmdbxx (0.9.14.1+git20160228.0b43ca8-1) unstable; urgency=medium
+
+  * Initial release (Closes: #872401)
+
+ -- Hubert Chathi <uhoreg@debian.org>  Sun, 10 Sep 2017 13:00:10 -0400
