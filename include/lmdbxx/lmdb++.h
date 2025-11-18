@@ -25,6 +25,12 @@
 
 #ifdef LMDBXX_DEBUG
 #include <cassert>     /* for assert() */
+#include <unordered_map>
+#include <mutex>
+#include <filesystem>
+#include <thread>      /* for std::thread::id */
+#include <algorithm>   /* for std::none_of */
+#include <optional>
 #endif
 #include <cstddef>     /* for std::size_t */
 #include <cstdio>      /* for std::snprintf() */
@@ -38,6 +44,73 @@
 namespace lmdb {
   using mode = mdb_mode_t;
 }
+
+#ifdef LMDBXX_DEBUG
+namespace lmdb::val {
+  namespace fs = std::filesystem;
+
+  inline std::mutex mutex;
+  inline std::unordered_map<MDB_env*, fs::path> opened_envs;
+
+  struct TXN_val {
+    MDB_env* env;
+    MDB_txn* parent;
+    std::thread::id thread_id;
+
+    bool active = true;  // set to false by mdb_txn_reset
+  };
+  inline std::unordered_map<MDB_txn*, TXN_val> opened_txns;
+
+  struct Cursor_val {
+    MDB_txn* txn;
+    MDB_dbi dbi;
+
+    bool active = false;
+  };
+  inline std::unordered_map<MDB_cursor*, Cursor_val> opened_cursors;
+  struct DBI_val {
+    MDB_env* env;
+    std::optional<std::string> name;
+    MDB_txn* opening_txn;  // set to NULL once the txn commits, then the dbi can be used by other txns
+    bool can_be_used_by_other_threads = false;
+  };
+  inline std::unordered_map<MDB_dbi, DBI_val> opened_dbis;
+
+
+  static inline void check_txn(MDB_txn* txn, bool active_expect_value = true) {
+    assert(opened_txns.at(txn).thread_id == std::this_thread::get_id());
+    assert(opened_txns.at(txn).active == active_expect_value);
+  }
+
+  static inline void check_txn(MDB_txn* txn, MDB_env* env, bool active_expect_value = true) {
+    check_txn(txn, active_expect_value);
+    assert(opened_txns.at(txn).env == env);
+  }
+
+  static inline void check_dbi(MDB_txn* txn, MDB_dbi dbi) {
+    check_txn(txn);
+    auto& dbi_val = opened_dbis.at(dbi);
+    if(!dbi_val.can_be_used_by_other_threads) {
+      assert(dbi_val.opening_txn == txn);
+    }
+    assert(opened_txns.at(txn).env == dbi_val.env);
+  }
+
+  static inline void check_cursor(MDB_cursor* cursor, bool active_expect_value = true) {
+    auto& cursor_val = opened_cursors.at(cursor);
+    assert(cursor_val.active == active_expect_value);
+    check_txn(cursor_val.txn);
+  }
+
+  static inline fs::path try_absolute_path(const fs::path& p) {
+    std::error_code ec;
+    auto pa = fs::absolute(p, ec);
+    if(!ec)
+      return pa;
+    return p;
+  }
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /* Error Handling */
@@ -281,6 +354,22 @@ lmdb::env_open(MDB_env* const env,
                const char* const path,
                const unsigned int flags,
                const mode mode) {
+#ifdef LMDBXX_DEBUG
+  fs::path path_ = val::try_absolute_path(path);
+
+  if(flags & MDB_NOSUBDIR) {
+    assert(!val::fs::is_directory(path_));
+  } else {
+    assert(val::fs::is_directory(path_));
+  }
+
+  {
+    std::unique_lock l(val::mutex);
+    assert(std::none_of(val::opened_envs.begin(), val::opened_envs.end(), [&](const auto& v) {return v.second == path_;}) && "env already opened in this process");
+    
+    val::opened_envs.insert(std::make_pair(env, path_));
+  }
+#endif
   const int rc = ::mdb_env_open(env, path, flags, mode);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_env_open", rc);
@@ -371,6 +460,23 @@ lmdb::env_sync(MDB_env* const env,
  */
 static inline void
 lmdb::env_close(MDB_env* const env) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+
+    // check that all txns are closed
+    for(auto& txn : val::opened_txns) {
+      assert(txn.second.env != env);
+    }
+    // check that all dbis are closed (this might not be required?)
+    for(auto& dbi : val::opened_dbis) {
+      assert(dbi.second.env != env);
+    }
+    // TODO cursors?
+  
+    assert(val::opened_envs.erase(env) == 1);  
+  }
+#endif
   ::mdb_env_close(env);
 }
 
@@ -551,10 +657,23 @@ lmdb::txn_begin(MDB_env* const env,
                 MDB_txn* const parent,
                 const unsigned int flags,
                 MDB_txn** txn) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    if(parent)
+      val::check_txn(parent, env);
+  }
+#endif
   const int rc = ::mdb_txn_begin(env, parent, flags, txn);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_txn_begin", rc);
   }
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    assert(val::opened_txns.insert(std::make_pair(*txn, val::TXN_val{env, parent, std::this_thread::get_id()})).second);
+  }
+#endif
 }
 
 /**
@@ -562,6 +681,12 @@ lmdb::txn_begin(MDB_env* const env,
  */
 static inline MDB_env*
 lmdb::txn_env(MDB_txn* const txn) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn);
+  }
+#endif
   return ::mdb_txn_env(txn);
 }
 
@@ -571,6 +696,12 @@ lmdb::txn_env(MDB_txn* const txn) noexcept {
  */
 static inline std::size_t
 lmdb::txn_id(MDB_txn* const txn) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn);
+  }
+#endif
   return ::mdb_txn_id(txn);
 }
 #endif
@@ -581,10 +712,32 @@ lmdb::txn_id(MDB_txn* const txn) noexcept {
  */
 static inline void
 lmdb::txn_commit(MDB_txn* const txn) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn);
+    // check that there do not exist any child txns
+    for(auto& txn_ : val::opened_txns) {
+      assert(txn_.second.parent != txn);
+    }
+  }
+#endif
   const int rc = ::mdb_txn_commit(txn);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_txn_commit", rc);
   }
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    for(auto& dbi : val::opened_dbis) {
+      if(dbi.second.opening_txn == txn) {
+        dbi.second.opening_txn = NULL;
+        dbi.second.can_be_used_by_other_threads = true;
+      }
+    }
+    assert(val::opened_txns.erase(txn) == 1);
+  }
+#endif
 }
 
 /**
@@ -592,6 +745,25 @@ lmdb::txn_commit(MDB_txn* const txn) {
  */
 static inline void
 lmdb::txn_abort(MDB_txn* const txn) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn);
+    // check that there do not exist any child txns
+    for(auto& txn_ : val::opened_txns) {
+      assert(txn_.second.parent != txn);
+    }
+
+    for(auto& dbi : val::opened_dbis) {
+      if(dbi.second.opening_txn == txn) {
+        dbi.second.opening_txn = NULL;
+        dbi.second.can_be_used_by_other_threads = false;
+      }
+    }
+
+    assert(val::opened_txns.erase(txn) == 1);
+  }
+#endif
   ::mdb_txn_abort(txn);
 }
 
@@ -600,6 +772,16 @@ lmdb::txn_abort(MDB_txn* const txn) noexcept {
  */
 static inline void
 lmdb::txn_reset(MDB_txn* const txn) noexcept {
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn);
+    // check that there do not exist any child txns
+    for(auto& txn_ : val::opened_txns) {
+      assert(txn_.second.parent != txn);
+    }
+
+    val::opened_txns.at(txn).active = false;
+  }
   ::mdb_txn_reset(txn);
 }
 
@@ -609,6 +791,12 @@ lmdb::txn_reset(MDB_txn* const txn) noexcept {
  */
 static inline void
 lmdb::txn_renew(MDB_txn* const txn) {
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn, false);
+
+    val::opened_txns.at(txn).active = true;
+  }
   const int rc = ::mdb_txn_renew(txn);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_txn_renew", rc);
@@ -645,10 +833,24 @@ lmdb::dbi_open(MDB_txn* const txn,
                const char* const name,
                const unsigned int flags,
                MDB_dbi* const dbi) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn);
+  }
+#endif
   const int rc = ::mdb_dbi_open(txn, name, flags, dbi);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_dbi_open", rc);
   }
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    std::optional<std::string> dbi_name = name ? std::make_optional(name) : std::nullopt;
+    MDB_env* env = val::opened_txns.at(txn).env;
+    val::opened_dbis.insert(std::pair(*dbi, val::DBI_val{env, std::move(dbi_name), txn}));
+  }
+#endif
 }
 
 /**
@@ -659,6 +861,12 @@ static inline void
 lmdb::dbi_stat(MDB_txn* const txn,
                const MDB_dbi dbi,
                MDB_stat* const result) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_stat(txn, dbi, result);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_stat", rc);
@@ -673,6 +881,12 @@ static inline void
 lmdb::dbi_flags(MDB_txn* const txn,
                 const MDB_dbi dbi,
                 unsigned int* const flags) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_dbi_flags(txn, dbi, flags);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_dbi_flags", rc);
@@ -685,6 +899,13 @@ lmdb::dbi_flags(MDB_txn* const txn,
 static inline void
 lmdb::dbi_close(MDB_env* const env,
                 const MDB_dbi dbi) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    assert(val::opened_dbis.erase(dbi) == 1);
+    // TODO_val: check that there are no txns that have changed this dbi open
+  }
+#endif
   ::mdb_dbi_close(env, dbi);
 }
 
@@ -695,6 +916,12 @@ static inline void
 lmdb::dbi_drop(MDB_txn* const txn,
                const MDB_dbi dbi,
                const bool del = false) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_drop(txn, dbi, del ? 1 : 0);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_drop", rc);
@@ -709,6 +936,12 @@ static inline void
 lmdb::dbi_set_compare(MDB_txn* const txn,
                       const MDB_dbi dbi,
                       MDB_cmp_func* const cmp = nullptr) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_set_compare(txn, dbi, cmp);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_set_compare", rc);
@@ -723,6 +956,12 @@ static inline void
 lmdb::dbi_set_dupsort(MDB_txn* const txn,
                       const MDB_dbi dbi,
                       MDB_cmp_func* const cmp = nullptr) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_set_dupsort(txn, dbi, cmp);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_set_dupsort", rc);
@@ -737,6 +976,12 @@ static inline void
 lmdb::dbi_set_relfunc(MDB_txn* const txn,
                       const MDB_dbi dbi,
                       MDB_rel_func* const rel) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_set_relfunc(txn, dbi, rel);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_set_relfunc", rc);
@@ -751,6 +996,12 @@ static inline void
 lmdb::dbi_set_relctx(MDB_txn* const txn,
                      const MDB_dbi dbi,
                      void* const ctx) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_set_relctx(txn, dbi, ctx);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_set_relctx", rc);
@@ -767,6 +1018,12 @@ lmdb::dbi_get(MDB_txn* const txn,
               const MDB_dbi dbi,
               const MDB_val* const key,
               MDB_val* const data) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_get(txn, dbi, const_cast<MDB_val*>(key), data);
   if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND) {
     error::raise("mdb_get", rc);
@@ -785,6 +1042,12 @@ lmdb::dbi_put(MDB_txn* const txn,
               const MDB_val* const key,
               MDB_val* const data,
               const unsigned int flags = 0) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_put(txn, dbi, const_cast<MDB_val*>(key), data, flags);
   if (rc != MDB_SUCCESS && rc != MDB_KEYEXIST) {
     error::raise("mdb_put", rc);
@@ -802,6 +1065,12 @@ lmdb::dbi_del(MDB_txn* const txn,
               const MDB_dbi dbi,
               const MDB_val* const key,
               const MDB_val* const data = nullptr) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_del(txn, dbi, const_cast<MDB_val*>(key), const_cast<MDB_val*>(data));
   if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND) {
     error::raise("mdb_del", rc);
@@ -832,10 +1101,22 @@ static inline void
 lmdb::cursor_open(MDB_txn* const txn,
                   const MDB_dbi dbi,
                   MDB_cursor** const cursor) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_dbi(txn, dbi);
+  }
+#endif
   const int rc = ::mdb_cursor_open(txn, dbi, cursor);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_cursor_open", rc);
   }
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    assert(val::opened_cursors.insert(std::make_pair(*cursor, val::Cursor_val{txn, dbi})).second);
+  }
+#endif
 }
 
 /**
@@ -843,6 +1124,13 @@ lmdb::cursor_open(MDB_txn* const txn,
  */
 static inline void
 lmdb::cursor_close(MDB_cursor* const cursor) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_cursor(cursor);
+    assert(val::opened_cursors.erase(cursor) == 1);
+  }
+#endif
   ::mdb_cursor_close(cursor);
 }
 
@@ -853,6 +1141,15 @@ lmdb::cursor_close(MDB_cursor* const cursor) noexcept {
 static inline void
 lmdb::cursor_renew(MDB_txn* const txn,
                    MDB_cursor* const cursor) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_txn(txn);
+    auto& c = val::opened_cursors.at(cursor);
+    c.active = true;
+    c.txn = txn;
+  }
+#endif
   const int rc = ::mdb_cursor_renew(txn, cursor);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_cursor_renew", rc);
@@ -864,6 +1161,12 @@ lmdb::cursor_renew(MDB_txn* const txn,
  */
 static inline MDB_txn*
 lmdb::cursor_txn(MDB_cursor* const cursor) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_cursor(cursor);
+  }
+#endif
   return ::mdb_cursor_txn(cursor);
 }
 
@@ -872,6 +1175,12 @@ lmdb::cursor_txn(MDB_cursor* const cursor) noexcept {
  */
 static inline MDB_dbi
 lmdb::cursor_dbi(MDB_cursor* const cursor) noexcept {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_cursor(cursor);
+  }
+#endif
   return ::mdb_cursor_dbi(cursor);
 }
 
@@ -884,6 +1193,12 @@ lmdb::cursor_get(MDB_cursor* const cursor,
                  MDB_val* const key,
                  MDB_val* const data,
                  const MDB_cursor_op op) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_cursor(cursor);
+  }
+#endif
   const int rc = ::mdb_cursor_get(cursor, key, data, op);
   if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND) {
     error::raise("mdb_cursor_get", rc);
@@ -900,6 +1215,12 @@ lmdb::cursor_put(MDB_cursor* const cursor,
                  MDB_val* const key,
                  MDB_val* const data,
                  const unsigned int flags = 0) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_cursor(cursor);
+  }
+#endif
   const int rc = ::mdb_cursor_put(cursor, key, data, flags);
   if (rc != MDB_SUCCESS && rc != MDB_KEYEXIST) {
     error::raise("mdb_cursor_put", rc);
@@ -914,6 +1235,12 @@ lmdb::cursor_put(MDB_cursor* const cursor,
 static inline void
 lmdb::cursor_del(MDB_cursor* const cursor,
                  const unsigned int flags = 0) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_cursor(cursor);
+  }
+#endif
   const int rc = ::mdb_cursor_del(cursor, flags);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_cursor_del", rc);
@@ -927,6 +1254,12 @@ lmdb::cursor_del(MDB_cursor* const cursor,
 static inline void
 lmdb::cursor_count(MDB_cursor* const cursor,
                    std::size_t& count) {
+#ifdef LMDBXX_DEBUG
+  {
+    std::unique_lock l(val::mutex);
+    val::check_cursor(cursor);
+  }
+#endif
   const int rc = ::mdb_cursor_count(cursor, &count);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_cursor_count", rc);
@@ -1007,7 +1340,11 @@ public:
    * Destructor.
    */
   ~env() noexcept {
-    try { close(); } catch (...) {}
+    try { close(); } catch (...) {
+#ifdef LMDBXX_DEBUG
+      assert(false);
+#endif
+    }
   }
 
   /**
