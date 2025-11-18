@@ -31,6 +31,7 @@
 #include <thread>      /* for std::thread::id */
 #include <algorithm>   /* for std::none_of */
 #include <optional>
+#include <iostream>
 #endif
 #include <cstddef>     /* for std::size_t */
 #include <cstdio>      /* for std::snprintf() */
@@ -672,6 +673,7 @@ lmdb::txn_begin(MDB_env* const env,
   {
     std::unique_lock l(val::mutex);
     assert(val::opened_txns.insert(std::make_pair(*txn, val::TXN_val{env, parent, std::this_thread::get_id()})).second);
+    std::cerr << std::this_thread::get_id() << ": txn_beg: " << (const void*)*txn << std::endl;
   }
 #endif
 }
@@ -772,6 +774,7 @@ lmdb::txn_abort(MDB_txn* const txn) noexcept {
  */
 static inline void
 lmdb::txn_reset(MDB_txn* const txn) noexcept {
+#ifdef LMDBXX_DEBUG
   {
     std::unique_lock l(val::mutex);
     val::check_txn(txn);
@@ -782,6 +785,7 @@ lmdb::txn_reset(MDB_txn* const txn) noexcept {
 
     val::opened_txns.at(txn).active = false;
   }
+#endif
   ::mdb_txn_reset(txn);
 }
 
@@ -791,12 +795,14 @@ lmdb::txn_reset(MDB_txn* const txn) noexcept {
  */
 static inline void
 lmdb::txn_renew(MDB_txn* const txn) {
+#ifdef LMDBXX_DEBUG
   {
     std::unique_lock l(val::mutex);
     val::check_txn(txn, false);
 
     val::opened_txns.at(txn).active = true;
   }
+#endif
   const int rc = ::mdb_txn_renew(txn);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_txn_renew", rc);
@@ -1536,7 +1542,11 @@ public:
    */
   ~txn() noexcept {
     if (_handle) {
-      try { abort(); } catch (...) {}
+      try { abort(); } catch (...) {
+#ifdef LMDBXX_DEBUG
+        assert(false);
+#endif
+      }
       _handle = nullptr;
     }
   }
