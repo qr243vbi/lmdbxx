@@ -673,7 +673,6 @@ lmdb::txn_begin(MDB_env* const env,
   {
     std::unique_lock l(val::mutex);
     assert(val::opened_txns.insert(std::make_pair(*txn, val::TXN_val{env, parent, std::this_thread::get_id()})).second);
-    std::cerr << std::this_thread::get_id() << ": txn_beg: " << (const void*)*txn << std::endl;
   }
 #endif
 }
@@ -1120,7 +1119,7 @@ lmdb::cursor_open(MDB_txn* const txn,
 #ifdef LMDBXX_DEBUG
   {
     std::unique_lock l(val::mutex);
-    assert(val::opened_cursors.insert(std::make_pair(*cursor, val::Cursor_val{txn, dbi})).second);
+    assert(val::opened_cursors.insert(std::make_pair(*cursor, val::Cursor_val{txn, dbi, true})).second);
   }
 #endif
 }
