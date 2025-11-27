@@ -368,7 +368,8 @@ lmdb::env_open(MDB_env* const env,
     std::unique_lock l(val::mutex);
     assert(std::none_of(val::opened_envs.begin(), val::opened_envs.end(), [&](const auto& v) {return v.second == path_;}) && "env already opened in this process");
     
-    val::opened_envs.insert(std::make_pair(env, path_));
+    bool worked = val::opened_envs.insert(std::make_pair(env, path_)).second;
+    assert(worked);
   }
 #endif
   const int rc = ::mdb_env_open(env, path, flags, mode);
@@ -474,8 +475,9 @@ lmdb::env_close(MDB_env* const env) noexcept {
       assert(dbi.second.env != env);
     }
     // TODO cursors?
-  
-    assert(val::opened_envs.erase(env) == 1);  
+    
+    auto cnt = val::opened_envs.erase(env);
+    assert(cnt == 1);
   }
 #endif
   ::mdb_env_close(env);
@@ -672,7 +674,8 @@ lmdb::txn_begin(MDB_env* const env,
 #ifdef LMDBXX_DEBUG
   {
     std::unique_lock l(val::mutex);
-    assert(val::opened_txns.insert(std::make_pair(*txn, val::TXN_val{env, parent, std::this_thread::get_id()})).second);
+    bool worked = val::opened_txns.insert(std::make_pair(*txn, val::TXN_val{env, parent, std::this_thread::get_id()})).second;
+    assert(worked);
   }
 #endif
 }
@@ -736,7 +739,8 @@ lmdb::txn_commit(MDB_txn* const txn) {
         dbi.second.can_be_used_by_other_threads = true;
       }
     }
-    assert(val::opened_txns.erase(txn) == 1);
+    auto cnt = val::opened_txns.erase(txn);
+    assert(cnt == 1);
   }
 #endif
 }
@@ -762,7 +766,8 @@ lmdb::txn_abort(MDB_txn* const txn) noexcept {
       }
     }
 
-    assert(val::opened_txns.erase(txn) == 1);
+    auto cnt = val::opened_txns.erase(txn);
+    assert(cnt == 1);
   }
 #endif
   ::mdb_txn_abort(txn);
@@ -853,7 +858,8 @@ lmdb::dbi_open(MDB_txn* const txn,
     std::unique_lock l(val::mutex);
     std::optional<std::string> dbi_name = name ? std::make_optional(name) : std::nullopt;
     MDB_env* env = val::opened_txns.at(txn).env;
-    val::opened_dbis.insert(std::pair(*dbi, val::DBI_val{env, std::move(dbi_name), txn}));
+    bool worked = val::opened_dbis.insert(std::pair(*dbi, val::DBI_val{env, std::move(dbi_name), txn})).second;
+    assert(worked);
   }
 #endif
 }
@@ -907,8 +913,9 @@ lmdb::dbi_close(MDB_env* const env,
 #ifdef LMDBXX_DEBUG
   {
     std::unique_lock l(val::mutex);
-    assert(val::opened_dbis.erase(dbi) == 1);
-    // TODO_val: check that there are no txns that have changed this dbi open
+    auto cnt = val::opened_dbis.erase(dbi);
+    assert(cnt == 1);
+    // TODO_val: check that there are no txns that have changed this dbi are open
   }
 #endif
   ::mdb_dbi_close(env, dbi);
@@ -1119,7 +1126,8 @@ lmdb::cursor_open(MDB_txn* const txn,
 #ifdef LMDBXX_DEBUG
   {
     std::unique_lock l(val::mutex);
-    assert(val::opened_cursors.insert(std::make_pair(*cursor, val::Cursor_val{txn, dbi, true})).second);
+    auto worked = val::opened_cursors.insert(std::make_pair(*cursor, val::Cursor_val{txn, dbi, true})).second;
+    assert(worked);
   }
 #endif
 }
@@ -1133,7 +1141,8 @@ lmdb::cursor_close(MDB_cursor* const cursor) noexcept {
   {
     std::unique_lock l(val::mutex);
     val::check_cursor(cursor);
-    assert(val::opened_cursors.erase(cursor) == 1);
+    auto cnt = val::opened_cursors.erase(cursor);
+    assert(cnt == 1);
   }
 #endif
   ::mdb_cursor_close(cursor);
