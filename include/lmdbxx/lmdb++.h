@@ -21,7 +21,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <lmdb.h>      /* for MDB_*, mdb_*() */
+#include "lmdb.h"      /* for MDB_*, mdb_*() */
 
 #ifdef LMDBXX_DEBUG
 #include <cassert>     /* for assert() */
@@ -933,6 +933,364 @@ lmdb::cursor_count(MDB_cursor* const cursor,
   }
 }
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/* Procedural Interface: Aggregates (AELMDB) */
+
+#if defined(MDB_AELMDB_VERSION)
+
+namespace lmdb {
+  static inline void agg_info(MDB_txn* txn, MDB_dbi dbi, unsigned int* agg_flags);
+  static inline void agg_set_hash_offset(MDB_txn* txn, MDB_dbi dbi, unsigned int hash_offset);
+  static inline unsigned int agg_get_hash_offset(MDB_txn* txn, MDB_dbi dbi);
+  static inline void agg_totals(MDB_txn* txn, MDB_dbi dbi, MDB_agg* out);
+  static inline void agg_prefix(MDB_txn* txn, MDB_dbi dbi,
+    const MDB_val* key, const MDB_val* data, unsigned int flags, MDB_agg* out);
+  static inline void agg_range(MDB_txn* txn, MDB_dbi dbi,
+    const MDB_val* low_key, const MDB_val* low_data,
+    const MDB_val* high_key, const MDB_val* high_data,
+    unsigned int flags, MDB_agg* out);
+  static inline bool agg_rank(MDB_txn* txn, MDB_dbi dbi,
+    MDB_val* key, MDB_val* data, MDB_agg_weight weight,
+    unsigned int flags, uint64_t* rank, uint64_t* dup_index);
+  static inline bool agg_select(MDB_txn* txn, MDB_dbi dbi, MDB_agg_weight weight,
+    uint64_t rank, MDB_val* key, MDB_val* data, uint64_t* dup_index);
+  static inline bool agg_cursor_seek_rank(MDB_cursor* cursor, uint64_t rank, MDB_val* key, MDB_val* data);
+  static inline void agg_window_fingerprint2(MDB_txn* txn, MDB_dbi dbi,
+    const MDB_val* low_key, const MDB_val* low_data,
+    const MDB_val* high_key, const MDB_val* high_data,
+    unsigned int range_flags,
+    MDB_agg_window* window,
+    uint64_t rel_begin, uint64_t rel_end,
+    MDB_agg* out);
+  static inline void agg_window_rank2(MDB_txn* txn, MDB_dbi dbi,
+    const MDB_val* low_key, const MDB_val* low_data,
+    const MDB_val* high_key, const MDB_val* high_data,
+    unsigned int range_flags,
+    MDB_agg_window* window,
+    const MDB_val* key, const MDB_val* data,
+    uint64_t* rel_rank);
+}
+
+/**
+ * @throws lmdb::error on failure
+ */
+static inline void
+lmdb::agg_info(MDB_txn* const txn,
+               const MDB_dbi dbi,
+               unsigned int* const agg_flags) {
+  if (agg_flags == nullptr) {
+    error::raise("mdb_agg_info", EINVAL);
+  }
+
+  const int rc = ::mdb_agg_info(txn, dbi, agg_flags);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_agg_info", rc);
+  }
+}
+
+/**
+ * @throws lmdb::error on failure
+ */
+static inline void
+lmdb::agg_set_hash_offset(MDB_txn* const txn,
+                          const MDB_dbi dbi,
+                          const unsigned int hash_offset) {
+  const int rc = ::mdb_set_hash_offset(txn, dbi, hash_offset);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_set_hash_offset", rc);
+  }
+}
+
+/**
+ * @throws lmdb::error on failure
+ */
+static inline unsigned int 
+lmdb::agg_get_hash_offset(MDB_txn* txn, MDB_dbi dbi) {
+  unsigned int off = 0;
+  const int rc = ::mdb_get_hash_offset(txn, dbi, &off);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_get_hash_offset", rc);
+  }
+  return off;
+}
+
+/**
+ * @throws lmdb::error on failure
+ */
+static inline void
+lmdb::agg_totals(MDB_txn* const txn,
+                 const MDB_dbi dbi,
+                 MDB_agg* const out) {
+  if (out == nullptr) {
+    error::raise("mdb_agg_totals", EINVAL);
+  }
+
+  const int rc = ::mdb_agg_totals(txn, dbi, out);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_agg_totals", rc);
+  }
+}
+
+/**
+ * @throws lmdb::error on failure
+ */
+static inline void
+lmdb::agg_prefix(MDB_txn* const txn,
+                  const MDB_dbi dbi,
+                  const MDB_val* const key,
+                  const MDB_val* const data,
+                  const unsigned int flags,
+                  MDB_agg* const out) {
+  if (key == nullptr || out == nullptr) {
+    error::raise("mdb_agg_prefix", EINVAL);
+  }
+
+  const int rc = ::mdb_agg_prefix(txn, dbi, key, data, flags, out);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_agg_prefix", rc);
+  }
+}
+
+/**
+ * @throws lmdb::error on failure
+ */
+static inline void
+lmdb::agg_range(MDB_txn* const txn,
+                 const MDB_dbi dbi,
+                 const MDB_val* const low_key,
+                 const MDB_val* const low_data,
+                 const MDB_val* const high_key,
+                 const MDB_val* const high_data,
+                 const unsigned int flags,
+                 MDB_agg* const out) {
+  if (out == nullptr) {
+    error::raise("mdb_agg_range", EINVAL);
+  }
+
+  const int rc = ::mdb_agg_range(txn, dbi,
+    low_key, low_data,
+    high_key, high_data,
+    flags, out);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_agg_range", rc);
+  }
+}
+
+/**
+ * @retval true  if a record was located
+ * @retval false if not found / out of range
+ */
+static inline bool
+lmdb::agg_rank(MDB_txn* const txn,
+               const MDB_dbi dbi,
+               MDB_val* const key,
+               MDB_val* const data,
+               const MDB_agg_weight weight,
+               const unsigned int flags,
+               uint64_t* const rank,
+               uint64_t* const dup_index = nullptr) {
+  if (key == nullptr || rank == nullptr) {
+    error::raise("mdb_agg_rank", EINVAL);
+  }
+  MDB_val dummy_data{};
+  MDB_val* const data_p = (data != nullptr) ? data : &dummy_data;
+
+  const int rc = ::mdb_agg_rank(txn, dbi, key, data_p, weight, flags, rank, dup_index);
+  if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND) {
+    error::raise("mdb_agg_rank", rc);
+  }
+  return (rc == MDB_SUCCESS);
+}
+
+/**
+ * @retval true  if a record was located
+ * @retval false if not found / out of range
+ */
+static inline bool
+lmdb::agg_select(MDB_txn* const txn,
+                 const MDB_dbi dbi,
+                 const MDB_agg_weight weight,
+                 const uint64_t rank,
+                 MDB_val* const key,
+                 MDB_val* const data,
+                 uint64_t* const dup_index = nullptr) {
+  if (key == nullptr) {
+    error::raise("mdb_agg_select", EINVAL);
+  }
+  MDB_val dummy_data{};
+  MDB_val* const data_p = (data != nullptr) ? data : &dummy_data;
+
+  const int rc = ::mdb_agg_select(txn, dbi, weight, rank, key, data_p, dup_index);
+  if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND) {
+    error::raise("mdb_agg_select", rc);
+  }
+  return (rc == MDB_SUCCESS);
+}
+
+
+/**
+ * Positions an existing cursor at the specified zero-based entry rank.
+ *
+ * @retval true if positioned
+ * @retval false if not found / out of range
+ */
+static inline bool
+lmdb::agg_cursor_seek_rank(MDB_cursor* const cursor,
+                           const uint64_t rank,
+                           MDB_val* const key,
+                           MDB_val* const data) {
+  if (cursor == nullptr || key == nullptr) {
+    error::raise("mdb_agg_cursor_seek_rank", EINVAL);
+  }
+  MDB_val dummy_data{};
+  MDB_val* const data_p = (data != nullptr) ? data : &dummy_data;
+
+  const int rc = ::mdb_agg_cursor_seek_rank(cursor, rank, key, data_p);
+  if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND) {
+    error::raise("mdb_agg_cursor_seek_rank", rc);
+  }
+  return (rc == MDB_SUCCESS);
+}
+
+static inline void
+lmdb::agg_window_fingerprint2(MDB_txn* const txn,
+                              const MDB_dbi dbi,
+                              const MDB_val* const low_key,
+                              const MDB_val* const low_data,
+                              const MDB_val* const high_key,
+                              const MDB_val* const high_data,
+                              const unsigned int range_flags,
+                              MDB_agg_window* const window,
+                              const uint64_t rel_begin,
+                              const uint64_t rel_end,
+                              MDB_agg* const out) {
+  if (window == nullptr || out == nullptr) {
+    error::raise("mdb_agg_window_fingerprint", EINVAL);
+  }
+  const int rc = ::mdb_agg_window_fingerprint(txn, dbi,
+                                               low_key, low_data,
+                                               high_key, high_data,
+                                               range_flags,
+                                               window,
+                                               rel_begin, rel_end,
+                                               out);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_agg_window_fingerprint", rc);
+  }
+}
+
+static inline void
+lmdb::agg_window_rank2(MDB_txn* const txn,
+                       const MDB_dbi dbi,
+                       const MDB_val* const low_key,
+                       const MDB_val* const low_data,
+                       const MDB_val* const high_key,
+                       const MDB_val* const high_data,
+                       const unsigned int range_flags,
+                       MDB_agg_window* const window,
+                       const MDB_val* const key,
+                       const MDB_val* const data,
+                       uint64_t* const rel_rank) {
+  if (window == nullptr || key == nullptr || rel_rank == nullptr) {
+    error::raise("mdb_agg_window_rank", EINVAL);
+  }
+  const int rc = ::mdb_agg_window_rank(txn, dbi,
+                                        low_key, low_data,
+                                        high_key, high_data,
+                                        range_flags,
+                                        window,
+                                        key, data,
+                                        rel_rank);
+  if (rc != MDB_SUCCESS) {
+    error::raise("mdb_agg_window_rank", rc);
+  }
+}
+
+#endif /* MDB_AELMDB_VERSION */
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/* Resource Interface: Aggregates (AELMDB) */
+
+#if defined(MDB_AELMDB_VERSION)
+
+namespace lmdb {
+  struct agg;
+
+  /** Typed weight selector for rank/select operations. */
+  enum class agg_weight : unsigned int {
+    entries = MDB_AGG_WEIGHT_ENTRIES,
+    keys    = MDB_AGG_WEIGHT_KEYS,
+  };
+
+  /** Typed mode selector for rank queries. */
+  enum class agg_rank_mode : unsigned int {
+    exact     = MDB_AGG_RANK_EXACT,
+    set_range = MDB_AGG_RANK_SET_RANGE,
+  };
+
+  static inline MDB_agg_weight agg_weight_native(const agg_weight w) noexcept {
+    return static_cast<MDB_agg_weight>(static_cast<unsigned int>(w));
+  }
+
+  static inline unsigned int agg_rank_flags(const agg_rank_mode m) noexcept {
+    return static_cast<unsigned int>(m);
+  }
+}
+
+/**
+ * Wrapper type for `MDB_agg` result structures.
+ *
+ * @note This is a trivially copyable, standard-layout type (no extra fields).
+ */
+struct lmdb::agg : public MDB_agg {
+  bool has_entries() const noexcept {
+    return (mv_flags & MDB_AGG_ENTRIES) != 0;
+  }
+
+  bool has_keys() const noexcept {
+    return (mv_flags & MDB_AGG_KEYS) != 0;
+  }
+
+  bool has_hashsum() const noexcept {
+    return (mv_flags & MDB_AGG_HASHSUM) != 0;
+  }
+
+
+  /**
+   * Indicates that HASHSUM bytes are sourced from the record key (starting at md_hash_offset)
+   * rather than from the record value.
+   */
+  bool has_hashsource_from_key() const noexcept {
+#ifdef MDB_AGG_HASHSOURCE_FROM_KEY
+    return (mv_flags & MDB_AGG_HASHSOURCE_FROM_KEY) != 0;
+#else
+    return false;
+#endif
+  }
+
+  const uint8_t* hashsum_data() const noexcept {
+    return mv_agg_hashes;
+  }
+
+  std::size_t hashsum_size() const noexcept {
+    return MDB_HASH_SIZE;
+  }
+
+  void clear() noexcept {
+    std::memset(static_cast<MDB_agg*>(this), 0, sizeof(MDB_agg));
+  }
+};
+
+#if !(defined(__COVERITY__) || defined(_MSC_VER))
+static_assert(sizeof(lmdb::agg) == sizeof(MDB_agg), "sizeof(lmdb::agg) != sizeof(MDB_agg)");
+#endif
+
+#endif /* MDB_AELMDB_VERSION */
+
 ////////////////////////////////////////////////////////////////////////////////
 /* Resource Interface: Environment */
 
@@ -1382,6 +1740,332 @@ public:
     return result;
   }
 
+#if defined(MDB_AELMDB_VERSION)
+
+  /**
+   * Retrieves the aggregate schema flags for this database handle.
+   *
+   * @param txn a transaction handle
+   * @throws lmdb::error on failure
+   */
+  unsigned int agg_flags(MDB_txn* const txn) const {
+    unsigned int result{};
+    lmdb::agg_info(txn, handle(), &result);
+    return result;
+  }
+
+  /**
+   * Convenience accessor for HASHSUM source selection.
+   *
+   * @returns true when MDB_AGG_HASHSOURCE_FROM_KEY is enabled (hash bytes come from keys).
+   */
+  bool hashsum_source_from_key(MDB_txn* const txn) const {
+#ifdef MDB_AGG_HASHSOURCE_FROM_KEY
+    return (agg_flags(txn) & MDB_AGG_HASHSOURCE_FROM_KEY) != 0;
+#else
+    (void)txn;
+    return false;
+#endif
+  }
+
+  /**
+   * Configure the hash offset for this HASHSUM-enabled DBI.
+   *
+   * This must be called in a write transaction on an empty DBI.
+   *
+   * @param txn a write transaction handle
+   * @param hash_offset byte offset within the key or value used as hash input
+   * @throws lmdb::error on failure
+   */
+  dbi& set_hash_offset(MDB_txn* const txn,
+                       const unsigned int hash_offset) {
+    lmdb::agg_set_hash_offset(txn, handle(), hash_offset);
+    return *this;
+  }
+
+  /**
+   * Returns the hash offset for this HASHSUM-enabled DBI.
+   *
+   * @param txn a transaction handle
+   * @throws lmdb::error on failure
+   */
+  unsigned int hash_offset(MDB_txn* const txn) const {
+    return lmdb::agg_get_hash_offset(txn, handle());
+  }
+
+  /**
+   * Returns aggregate totals for the whole DBI (O(1)).
+   *
+   * @param txn a transaction handle
+   * @throws lmdb::error on failure
+   */
+  lmdb::agg totals(MDB_txn* const txn) const {
+    lmdb::agg result{};
+    lmdb::agg_totals(txn, handle(), &result);
+    return result;
+  }
+
+  /**
+   * Aggregate over a prefix (key-only or record-order for MDB_DUPSORT).
+   *
+   * If @p data is nullptr (or DB is not MDB_DUPSORT), key-prefix semantics are used.
+   *
+   * @param txn a transaction handle
+   * @param key prefix key (nullable for totals)
+   * @param data prefix data (nullable)
+   * @param flags prefix flags (e.g. MDB_PREFIX_FIXED)
+   * @throws lmdb::error on failure
+   */
+  lmdb::agg prefix(MDB_txn* const txn,
+                   const std::string_view* const key,
+                   const std::string_view* const data,
+                   const unsigned int flags = 0) const {
+    MDB_val keyV{}, dataV{};
+    const MDB_val* keyP = nullptr;
+    const MDB_val* dataP = nullptr;
+
+    if (key != nullptr) {
+      keyV = MDB_val{key->size(), const_cast<char*>(key->data())};
+      keyP = &keyV;
+    }
+    if (data != nullptr) {
+      dataV = MDB_val{data->size(), const_cast<char*>(data->data())};
+      dataP = &dataV;
+    }
+
+    lmdb::agg result{};
+    lmdb::agg_prefix(txn, handle(), keyP, dataP, flags, &result);
+    return result;
+  }
+
+  lmdb::agg prefix(MDB_txn* const txn,
+                   const std::string_view key,
+                   const unsigned int flags = 0) const {
+    return prefix(txn, &key, nullptr, flags);
+  }
+
+  lmdb::agg prefix(MDB_txn* const txn,
+                   const std::string_view key,
+                   const std::string_view data,
+                   const unsigned int flags = 0) const {
+    return prefix(txn, &key, &data, flags);
+  }
+
+  /**
+   * Aggregate over a range (key-only or record-order for MDB_DUPSORT).
+   *
+   * If low_data/high_data are nullptr (or DB is not MDB_DUPSORT), key-range semantics are used.
+   *
+   * @param txn a transaction handle
+   * @param low_key lower boundary key (nullable for open-ended)
+   * @param low_data lower boundary data (nullable)
+   * @param high_key upper boundary key (nullable for open-ended)
+   * @param high_data upper boundary data (nullable)
+   * @param flags range flags (e.g. MDB_RANGE_LOWER_INCL/MDB_RANGE_UPPER_INCL)
+   * @throws lmdb::error on failure
+   */
+  lmdb::agg range(MDB_txn* const txn,
+                  const std::string_view* const low_key,
+                  const std::string_view* const low_data,
+                  const std::string_view* const high_key,
+                  const std::string_view* const high_data,
+                  const unsigned int flags = 0) const {
+    MDB_val lkV{}, ldV{}, hkV{}, hdV{};
+    const MDB_val* lkP = nullptr;
+    const MDB_val* ldP = nullptr;
+    const MDB_val* hkP = nullptr;
+    const MDB_val* hdP = nullptr;
+
+    if (low_key != nullptr) {
+      lkV = MDB_val{low_key->size(), const_cast<char*>(low_key->data())};
+      lkP = &lkV;
+    }
+    if (low_data != nullptr) {
+      ldV = MDB_val{low_data->size(), const_cast<char*>(low_data->data())};
+      ldP = &ldV;
+    }
+    if (high_key != nullptr) {
+      hkV = MDB_val{high_key->size(), const_cast<char*>(high_key->data())};
+      hkP = &hkV;
+    }
+    if (high_data != nullptr) {
+      hdV = MDB_val{high_data->size(), const_cast<char*>(high_data->data())};
+      hdP = &hdV;
+    }
+
+    lmdb::agg result{};
+    lmdb::agg_range(txn, handle(),
+                     lkP, ldP,
+                     hkP, hdP,
+                     flags, &result);
+    return result;
+  }
+
+  lmdb::agg range(MDB_txn* const txn,
+                  const std::string_view low_key,
+                  const std::string_view high_key,
+                  const unsigned int flags = 0) const {
+    return range(txn, &low_key, nullptr, &high_key, nullptr, flags);
+  }
+
+  lmdb::agg range(MDB_txn* const txn,
+                  const std::string_view low_key,
+                  const std::string_view low_data,
+                  const std::string_view high_key,
+                  const std::string_view high_data,
+                  const unsigned int flags = 0) const {
+    return range(txn, &low_key, &low_data, &high_key, &high_data, flags);
+  }
+
+  /**
+   * Determine the rank of a record, in entries or keys.
+   *
+   * In set-range mode, @p key and @p data are updated to the located record.
+   *
+   * @retval true  if a record was located
+   * @retval false if not found / out of range
+   */
+  bool rank(MDB_txn* const txn,
+            std::string_view& key,
+            std::string_view& data,
+            const lmdb::agg_weight weight,
+            const lmdb::agg_rank_mode mode,
+            uint64_t& out_rank,
+            uint64_t* const dup_index = nullptr) const {
+    MDB_val keyV{key.size(), const_cast<char*>(key.data())};
+    MDB_val dataV{data.size(), const_cast<char*>(data.data())};
+
+    const bool ok = lmdb::agg_rank(txn, handle(),
+                                   &keyV, &dataV,
+                                   lmdb::agg_weight_native(weight),
+                                   lmdb::agg_rank_flags(mode),
+                                   &out_rank, dup_index);
+    if (ok) {
+      key = std::string_view(static_cast<char*>(keyV.mv_data), keyV.mv_size);
+      data = std::string_view(static_cast<char*>(dataV.mv_data), dataV.mv_size);
+    }
+    return ok;
+  }
+
+  /**
+   * Determine the rank of a key (key-only ranks).
+   *
+   * This always uses key-weight ranks and ignores duplicates.
+   */
+  bool rank(MDB_txn* const txn,
+            std::string_view& key,
+            const lmdb::agg_rank_mode mode,
+            uint64_t& out_rank) const {
+    MDB_val keyV{key.size(), const_cast<char*>(key.data())};
+    MDB_val dummy_data{};
+    uint64_t dummy_dup_index{};
+    const bool ok = lmdb::agg_rank(txn, handle(),
+                                   &keyV, &dummy_data,
+                                   MDB_AGG_WEIGHT_KEYS,
+                                   lmdb::agg_rank_flags(mode),
+                                   &out_rank, &dummy_dup_index);
+    if (ok) {
+      key = std::string_view(static_cast<char*>(keyV.mv_data), keyV.mv_size);
+    }
+    return ok;
+  }
+
+  /**
+   * Select the record at a given rank.
+   *
+   * @retval true  if a record was located
+   * @retval false if not found / out of range
+   */
+  bool select(MDB_txn* const txn,
+              const lmdb::agg_weight weight,
+              const uint64_t rank,
+              std::string_view& key,
+              std::string_view& data,
+              uint64_t* const dup_index = nullptr) const {
+    MDB_val keyV{}, dataV{};
+    const bool ok = lmdb::agg_select(txn, handle(),
+                                     lmdb::agg_weight_native(weight),
+                                     rank, &keyV, &dataV, dup_index);
+    if (ok) {
+      key = std::string_view(static_cast<char*>(keyV.mv_data), keyV.mv_size);
+      data = std::string_view(static_cast<char*>(dataV.mv_data), dataV.mv_size);
+    }
+    return ok;
+  }
+
+  lmdb::agg window_fingerprint(MDB_txn* const txn,
+                               const std::string_view* const low_key,
+                               const std::string_view* const low_data,
+                               const std::string_view* const high_key,
+                               const std::string_view* const high_data,
+                               const unsigned int range_flags,
+                               MDB_agg_window& window,
+                               const uint64_t rel_begin,
+                               const uint64_t rel_end = MDB_AGG_WINDOW_END) const {
+    MDB_val lkV{}, ldV{}, hkV{}, hdV{};
+    const MDB_val* lkP = nullptr;
+    const MDB_val* ldP = nullptr;
+    const MDB_val* hkP = nullptr;
+    const MDB_val* hdP = nullptr;
+
+    if (low_key != nullptr)  { lkV = MDB_val{low_key->size(),  const_cast<char*>(low_key->data())};  lkP = &lkV; }
+    if (low_data != nullptr) { ldV = MDB_val{low_data->size(), const_cast<char*>(low_data->data())}; ldP = &ldV; }
+    if (high_key != nullptr) { hkV = MDB_val{high_key->size(), const_cast<char*>(high_key->data())}; hkP = &hkV; }
+    if (high_data != nullptr){ hdV = MDB_val{high_data->size(),const_cast<char*>(high_data->data())};hdP = &hdV; }
+
+    lmdb::agg result{};
+    lmdb::agg_window_fingerprint2(txn, handle(),
+                                  lkP, ldP,
+                                  hkP, hdP,
+                                  range_flags,
+                                  &window,
+                                  rel_begin, rel_end,
+                                  &result);
+    return result;
+  }
+
+  uint64_t window_rank(MDB_txn* const txn,
+                       const std::string_view* const low_key,
+                       const std::string_view* const low_data,
+                       const std::string_view* const high_key,
+                       const std::string_view* const high_data,
+                       const unsigned int range_flags,
+                       MDB_agg_window& window,
+                       const std::string_view key,
+                       const std::string_view* const data = nullptr) const {
+    MDB_val lkV{}, ldV{}, hkV{}, hdV{}, kV{}, dV{};
+    const MDB_val* lkP = nullptr;
+    const MDB_val* ldP = nullptr;
+    const MDB_val* hkP = nullptr;
+    const MDB_val* hdP = nullptr;
+    const MDB_val* dP  = nullptr;
+
+    if (low_key != nullptr)  { lkV = MDB_val{low_key->size(),  const_cast<char*>(low_key->data())};  lkP = &lkV; }
+    if (low_data != nullptr) { ldV = MDB_val{low_data->size(), const_cast<char*>(low_data->data())}; ldP = &ldV; }
+    if (high_key != nullptr) { hkV = MDB_val{high_key->size(), const_cast<char*>(high_key->data())}; hkP = &hkV; }
+    if (high_data != nullptr){ hdV = MDB_val{high_data->size(),const_cast<char*>(high_data->data())};hdP = &hdV; }
+
+    kV = MDB_val{key.size(), const_cast<char*>(key.data())};
+
+    if (data != nullptr) {
+      dV = MDB_val{data->size(), const_cast<char*>(data->data())};
+      dP = &dV;
+    }
+
+    uint64_t rel = 0;
+    lmdb::agg_window_rank2(txn, handle(),
+                           lkP, ldP,
+                           hkP, hdP,
+                           range_flags,
+                           &window,
+                           &kV, dP,
+                           &rel);
+    return rel;
+  }
+
+
+#endif /* MDB_AELMDB_VERSION */
+
   /**
    * Returns the number of records in this database.
    *
@@ -1642,6 +2326,30 @@ public:
     }
     return ret;
   }
+
+
+/**
+ * Positions the cursor at the specified zero-based entry rank using aggregates.
+ *
+ * On success, @p key and @p val are updated to point to the located record, and
+ * the cursor is ready for MDB_NEXT iteration.
+ *
+ * @retval true if positioned
+ * @retval false if not found / out of range
+ * @throws lmdb::error on failure
+ */
+bool seek_rank(const uint64_t rank,
+               std::string_view &key,
+               std::string_view &val) {
+  MDB_val keyV{};
+  MDB_val valV{};
+  const bool ret = lmdb::agg_cursor_seek_rank(handle(), rank, &keyV, &valV);
+  if (ret) {
+    key = std::string_view(static_cast<char*>(keyV.mv_data), keyV.mv_size);
+    val = std::string_view(static_cast<char*>(valV.mv_data), valV.mv_size);
+  }
+  return ret;
+}
 
   /**
    * Stores key/data pairs into the database. The cursor is positioned at the new item, or on failure usually near it.
