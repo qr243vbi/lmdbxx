@@ -942,8 +942,8 @@ lmdb::cursor_count(MDB_cursor* const cursor,
 
 namespace lmdb {
   static inline void agg_info(MDB_txn* txn, MDB_dbi dbi, unsigned int* agg_flags);
-  static inline void agg_set_hash_offset(MDB_txn* txn, MDB_dbi dbi, unsigned int hash_offset);
-  static inline unsigned int agg_get_hash_offset(MDB_txn* txn, MDB_dbi dbi);
+  static inline void agg_set_hash_offset(MDB_txn* txn, MDB_dbi dbi, int hash_offset);
+  static inline int agg_get_hash_offset(MDB_txn* txn, MDB_dbi dbi);
   static inline void agg_totals(MDB_txn* txn, MDB_dbi dbi, MDB_agg* out);
   static inline void agg_prefix(MDB_txn* txn, MDB_dbi dbi,
     const MDB_val* key, const MDB_val* data, unsigned int flags, MDB_agg* out);
@@ -996,7 +996,7 @@ lmdb::agg_info(MDB_txn* const txn,
 static inline void
 lmdb::agg_set_hash_offset(MDB_txn* const txn,
                           const MDB_dbi dbi,
-                          const unsigned int hash_offset) {
+                          const int hash_offset) {
   const int rc = ::mdb_set_hash_offset(txn, dbi, hash_offset);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_set_hash_offset", rc);
@@ -1006,9 +1006,9 @@ lmdb::agg_set_hash_offset(MDB_txn* const txn,
 /**
  * @throws lmdb::error on failure
  */
-static inline unsigned int 
+static inline int 
 lmdb::agg_get_hash_offset(MDB_txn* txn, MDB_dbi dbi) {
-  unsigned int off = 0;
+  int off = 0;
   const int rc = ::mdb_get_hash_offset(txn, dbi, &off);
   if (rc != MDB_SUCCESS) {
     error::raise("mdb_get_hash_offset", rc);
