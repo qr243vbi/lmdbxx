@@ -957,7 +957,7 @@ namespace lmdb {
   static inline bool agg_select(MDB_txn* txn, MDB_dbi dbi, MDB_agg_weight weight,
     uint64_t rank, MDB_val* key, MDB_val* data, uint64_t* dup_index);
   static inline bool agg_cursor_seek_rank(MDB_cursor* cursor, uint64_t rank, MDB_val* key, MDB_val* data);
-  static inline void agg_window_fingerprint2(MDB_txn* txn, MDB_dbi dbi,
+  static inline void mdb_agg_window_aggregate(MDB_txn* txn, MDB_dbi dbi,
     const MDB_val* low_key, const MDB_val* low_data,
     const MDB_val* high_key, const MDB_val* high_data,
     unsigned int range_flags,
@@ -1155,29 +1155,29 @@ lmdb::agg_cursor_seek_rank(MDB_cursor* const cursor,
 }
 
 static inline void
-lmdb::agg_window_fingerprint2(MDB_txn* const txn,
-                              const MDB_dbi dbi,
-                              const MDB_val* const low_key,
-                              const MDB_val* const low_data,
-                              const MDB_val* const high_key,
-                              const MDB_val* const high_data,
-                              const unsigned int range_flags,
-                              MDB_agg_window* const window,
-                              const uint64_t rel_begin,
-                              const uint64_t rel_end,
-                              MDB_agg* const out) {
+lmdb::mdb_agg_window_aggregate(MDB_txn* const txn,
+                               const MDB_dbi dbi,
+                               const MDB_val* const low_key,
+                               const MDB_val* const low_data,
+                               const MDB_val* const high_key,
+                               const MDB_val* const high_data,
+                               const unsigned int range_flags,
+                               MDB_agg_window* const window,
+                               const uint64_t rel_begin,
+                               const uint64_t rel_end,
+                               MDB_agg* const out) {
   if (window == nullptr || out == nullptr) {
-    error::raise("mdb_agg_window_fingerprint", EINVAL);
+    error::raise("mdb_agg_window_aggregate", EINVAL);
   }
-  const int rc = ::mdb_agg_window_fingerprint(txn, dbi,
-                                               low_key, low_data,
-                                               high_key, high_data,
-                                               range_flags,
-                                               window,
-                                               rel_begin, rel_end,
-                                               out);
+  const int rc = ::mdb_agg_window_aggregate(txn, dbi,
+                                            low_key, low_data,
+                                            high_key, high_data,
+                                            range_flags,
+                                            window,
+                                            rel_begin, rel_end,
+                                            out);
   if (rc != MDB_SUCCESS) {
-    error::raise("mdb_agg_window_fingerprint", rc);
+    error::raise("mdb_agg_window_aggregate", rc);
   }
 }
 
@@ -1993,15 +1993,15 @@ public:
     return ok;
   }
 
-  lmdb::agg window_fingerprint(MDB_txn* const txn,
-                               const std::string_view* const low_key,
-                               const std::string_view* const low_data,
-                               const std::string_view* const high_key,
-                               const std::string_view* const high_data,
-                               const unsigned int range_flags,
-                               MDB_agg_window& window,
-                               const uint64_t rel_begin,
-                               const uint64_t rel_end = MDB_AGG_WINDOW_END) const {
+  lmdb::agg window_aggregate(MDB_txn* const txn,
+                             const std::string_view* const low_key,
+                             const std::string_view* const low_data,
+                             const std::string_view* const high_key,
+                             const std::string_view* const high_data,
+                             const unsigned int range_flags,
+                             MDB_agg_window& window,
+                             const uint64_t rel_begin,
+                             const uint64_t rel_end = MDB_AGG_WINDOW_END) const {
     MDB_val lkV{}, ldV{}, hkV{}, hdV{};
     const MDB_val* lkP = nullptr;
     const MDB_val* ldP = nullptr;
@@ -2014,13 +2014,13 @@ public:
     if (high_data != nullptr){ hdV = MDB_val{high_data->size(),const_cast<char*>(high_data->data())};hdP = &hdV; }
 
     lmdb::agg result{};
-    lmdb::agg_window_fingerprint2(txn, handle(),
-                                  lkP, ldP,
-                                  hkP, hdP,
-                                  range_flags,
-                                  &window,
-                                  rel_begin, rel_end,
-                                  &result);
+    lmdb::mdb_agg_window_aggregate(txn, handle(),
+                                   lkP, ldP,
+                                   hkP, hdP,
+                                   range_flags,
+                                   &window,
+                                   rel_begin, rel_end,
+                                   &result);
     return result;
   }
 
