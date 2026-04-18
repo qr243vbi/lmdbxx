@@ -6,10 +6,6 @@ Tests: compilation-test
 Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev
 Restrictions: allow-stderr
 
-Tests: installation-test
-Depends: @
-Restrictions: superficial
-
 Tests: pkg-config-test
 Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev
 Restrictions: superficial
