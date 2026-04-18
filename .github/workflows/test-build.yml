@@ -23,6 +23,7 @@ jobs:
         with:
           packages: debhelper-compat dpkg-dev lintian autopkgtest autodep8 liblmdb-dev g++ meson ninja-build liblmdb-dev build-essential:native
           version: 1.0
+          execute_install_scripts: true
 
       - name: Create upstream tarball
         run: |
