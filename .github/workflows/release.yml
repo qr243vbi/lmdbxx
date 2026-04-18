@@ -47,7 +47,7 @@ jobs:
         continue-on-error: true
       
       - name: Run autopkgtest
-        run: autopkgtest artifacts/*.deb -- null
+        run: sudo autopkgtest artifacts/*.deb -- null
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
