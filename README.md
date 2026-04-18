@@ -8,6 +8,7 @@ This library is a fork of [Arto Bendiken](https://ar.to/)'s [lmdbxx C++11 librar
 The main difference from Arto's version is that the `lmdb::val` class has been removed.
 Instead, all keys and values are [std::string_view](https://en.cppreference.com/w/cpp/string/basic_string_view)s.
 See the [Fork Differences](#fork-differences) section for full details on what has been changed from Arto's version.
+
 As last-resort option for older compilers, there is also a possibility to use
 the
 [std::experimental::string_view](https://en.cppreference.com/w/cpp/experimental/basic_string_view)
@@ -361,7 +362,7 @@ Because nested transactions are incompatible with `MDB_WRITEMAP`, they cannot be
 
 ## Support
 
-To report a bug or submit a patch for lmdb++, please file an issue in the [issue tracker on GitHub](https://github.com/hoytech/lmdbxx/issues).
+To report a bug or submit a patch for lmdb++, please file an issue in the [issue tracker on GitHub](https://github.com/qr243vbi/lmdbxx/issues).
 
 Questions and discussions about LMDB itself should be directed to the [OpenLDAP mailing lists](http://www.openldap.org/lists/).
 
@@ -407,9 +408,9 @@ This C++17 version is a fork of Arto Bendiken's C++11 version with the following
 
 * Added a section to the docs describing the [cursor double-free issue](#cursor-double-free-issue).
 
-* If an exception was throw by `txn.commit()` (ie `MDB_MAP_FULL`), and this transaction was later aborted (because it went out of scope while unwinding the stack), then a double-free would occur. This was [fixed](https://github.com/hoytech/lmdbxx/pull/3) by Niklas Salmoukas.
+* If an exception was throw by `txn.commit()` (ie `MDB_MAP_FULL`), and this transaction was later aborted (because it went out of scope while unwinding the stack), then a double-free would occur. This was [fixed](https://github.com/qr243vbi/lmdbxx/pull/3) by Niklas Salmoukas.
 
-* `dbi::open()` now optionally accepts the DBI name as a `string_view`. This is useful when the DBI names themselves are stored in the DB. [Requested](https://github.com/hoytech/lmdbxx/issues/5) by deepbluev7.
+* `dbi::open()` now optionally accepts the DBI name as a `string_view`. This is useful when the DBI names themselves are stored in the DB. [Requested](https://github.com/qr243vbi/lmdbxx/issues/5) by deepbluev7.
 
 
 
@@ -417,7 +418,106 @@ This C++17 version is a fork of Arto Bendiken's C++11 version with the following
 
 [Arto Bendiken](https://ar.to/)
 
-This fork maintained by [Doug Hoyte](https://hoytech.com)
+This fork maintained by [qr243vbi](https://github.com/qr243vbi)
+
+# liblmdbxx-dev — Debian Package
+
+Debian packaging for lmdb++ — a comprehensive C++17 header-only wrapper for LMDB (Lightning Memory-Mapped Database).
+
+## About lmdb++
+
+- **Header-only C++17** wrapper for the LMDB embedded database
+- **Modern C++ idioms**: RAII, std::string_view support, exception handling
+- **Zero overhead**: thin wrapper around the C API
+- **Fork of**: original lmdbxx by Arto Bendiken, maintained by Doug Hoyte
+- **Public Domain** (Unlicense)
+
+**Upstream**: [https://github.com/qr243vbi/lmdbxx](https://github.com/qr243vbi/lmdbxx)
+
+## Quick Start
+
+### Installing
+
+```bash
+sudo dpkg -i liblmdbxx-dev_*.deb
+sudo apt-get install -f
+```
+
+### Building from source
+
+```bash
+sudo apt-get install debhelper-compat build-essential dpkg-dev liblmdb-dev
+dpkg-source -x liblmdbxx_*.dsc
+cd liblmdbxx-*/
+dpkg-buildpackage -b -us -uc
+sudo dpkg -i ../liblmdbxx-dev_*.deb
+```
+
+## Package Information
+
+| Field | Value |
+|-------|-------|
+| **Package** | liblmdbxx-dev |
+| **Version** | 1.0.0-1 |
+| **Section** | libdevel |
+| **Architecture** | all (header-only) |
+| **Multi-Arch** | foreign |
+| **Maintainer** | qr243vbi |
+| **Build-Depends** | debhelper-compat (= 13) |
+| **Depends** | liblmdb-dev (>= 0.9.18) |
+
+## Debian Packaging Files
+
+```
+debian/
+├── changelog          # Version history (1.0.0-1)
+├── control            # Package metadata and dependencies
+├── copyright          # Unlicense + Apache-2.0 for debian/
+├── rules              # Build instructions
+├── source/format      # 3.0 (quilt)
+├── watch              # GitHub upstream release tracking
+└── tests/
+    ├── control              # Autopkgtest configuration
+    ├── installation-test    # Verify header installed
+    ├── compilation-test     # Test compilation with liblmdb
+    └── string-view-test     # std::string_view functionality test
+```
+
+## Autopkgtest
+
+Package includes comprehensive test suite:
+
+```bash
+autopkgtest liblmdbxx-dev_*.deb -- null
+```
+
+Tests verify:
+- Header file installation (`installation-test`)
+- Compilation with liblmdb (`compilation-test`)
+- std::string_view support (`string-view-test`)
+
+
+## Contributing
+
+1. Fork repository
+2. Modify `debian/` directory
+3. Update `debian/changelog` with `dch`
+4. Test with `dpkg-buildpackage -b -us -uc`
+5. Run `lintian` on resulting `.changes` file
+6. Submit pull request
+
+## License
+
+- **Upstream**: Unlicense (Public Domain)
+- **Debian packaging**: Apache License 2.0
+- See `debian/copyright` for full details
+
+## Support
+
+- **Packaging issues**: [https://github.com/qr243vbi/lmdbxx/issues](https://github.com/qr243vbi/lmdbxx/issues)
+- **Library issues**: [https://github.com/qr243vbi/lmdbxx/issues](https://github.com/qr243vbi/lmdbxx/issues)
+
+---
 
 ## License
 

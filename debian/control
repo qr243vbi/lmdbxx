@@ -1,13 +1,12 @@
 Source: lmdbxx
 Section: libdevel
 Priority: optional
-Maintainer: Ruslan Dautov <r.dautoff2016@yandex.ru>
-<<<<<<< HEAD
+Maintainer: qr243vbi <qr243vbi@atomicmail.io>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.7.3.0
-Homepage: https://github.com/hoytech/lmdbxx
-Vcs-Browser: https://github.com/Fordaxx/lmdbxx-deb
-Vcs-Git: https://github.com/Fordaxx/lmdbxx-deb.git
+Homepage: https://github.com/qr243vbi/lmdbxx
+Vcs-Browser: https://github.com/qr243vbi/lmdbxx
+Vcs-Git: https://github.com/qr243vbi/lmdbxx.git
 Rules-Requires-Root: no
 
 Package: liblmdbxx-dev
@@ -27,20 +26,3 @@ Description: C++17 header-only wrapper for LMDB
  and replaced with std::string_view.
  .
  This package provides the C++ header file.
-=======
-Build-Depends: debhelper-compat (= 13), liblmdb-dev
-Standards-Version: 4.7.2.0
-Homepage: https://github.com/hoytech/lmdbxx
-Vcs-Git: https://salsa.debian.org/debian/lmdbxx.git
-Vcs-Browser: https://salsa.debian.org/debian/lmdbxx
-
-Package: liblmdb++-dev
-Architecture: any
-Depends: liblmdb-dev, ${shlibs:Depends}, ${misc:Depends}
-Description: C++11/C++17 wrapper for LMDB
- This is a comprehensive C++ wrapper for the LMDB embedded database library,
- offering both an error-checked procedural interface and an object-oriented
- resource interface with RAII semantics.
- .
- This version includes support for C++17.
->>>>>>> f263b68eb2664deacae6aa568a2872304382099e

@@ -1,0 +1,56 @@
+name: Check Upstream Releases
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - test
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    container: debian:testing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install devscripts
+        run: |
+          apt-get update
+          apt-get install -y devscripts ca-certificates
+      - name: Run uscan
+        id: uscan
+        run: |
+          set +e
+          uscan --verbose --report > uscan.log 2>&1
+          EXIT_CODE=$?
+          set -e
+          cat uscan.log
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "new_version=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_version=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Create issue if new version found
+        if: steps.uscan.outputs.new_version == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'upstream-update',
+              state: 'open'
+            });
+            if (issues.data.length === 0) {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'New upstream version available',
+                body: 'uscan detected a new upstream version. Please update the package.',
+                labels: ['upstream-update']
+              });
+            }

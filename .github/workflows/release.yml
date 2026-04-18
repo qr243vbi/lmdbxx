@@ -1,0 +1,117 @@
+name: Release Debian Package
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: debian:testing
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            build-essential \
+            debhelper-compat \
+            dpkg-dev \
+            lintian \
+            autopkgtest \
+            autodep8 \
+            liblmdb-dev \
+            g++
+      
+      - name: Create upstream tarball
+        run: |
+          VERSION=$(head -1 debian/changelog | sed 's/.*(\([^)]*\)).*/\1/' | cut -d- -f1)
+          cd ..
+          tar --exclude='.git' --exclude='.github' --exclude='debian' -czf lmdbxx_${VERSION}.orig.tar.gz \
+            --transform "s,^lmdbxx,lmdbxx-${VERSION}," lmdbxx
+      
+      - name: Build source and binary packages
+        run: |
+          rm -rf .github
+          dpkg-buildpackage -us -uc -sa
+      
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts
+          mv ../*.deb ../*.dsc ../*.tar.* ../*.changes ../*.buildinfo artifacts/
+          ls -la artifacts/
+      
+      - name: Run lintian
+        run: lintian -i artifacts/*.changes
+        continue-on-error: true
+      
+      - name: Run autopkgtest
+        run: autopkgtest artifacts/*.deb -- null
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-packages
+          path: artifacts/*
+
+  create-release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+      
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find all-artifacts -type f -exec cp -v {} release-files/ \;
+          echo "Final release files:"
+          ls -lh release-files/
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.tag }}
+          body: |
+            ## liblmdbxx-dev ${{ steps.version.outputs.version }}
+            
+            Header-only C++17 LMDB wrapper library (Debian package).
+            
+            ### Artifacts
+            - **Source package** (.dsc, .orig.tar.gz) for rebuilding
+            - **Binary package** (Architecture: all - works on any platform)
+            
+            ### Installation
+            ```bash
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/liblmdbxx-dev_${{ steps.version.outputs.version }}_all.deb
+            sudo dpkg -i liblmdbxx-dev_${{ steps.version.outputs.version }}_all.deb
+            sudo apt-get install -f
+            ```
+            
+            ### Dependencies
+            - liblmdb-dev
+          files: release-files/*
+          draft: false
+          prerelease: false

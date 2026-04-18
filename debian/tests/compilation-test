@@ -1,26 +1,10 @@
 #!/bin/bash
 set -e
 
-<<<<<<< HEAD
 WORKDIR=$(mktemp -d)
 trap "rm -rf $WORKDIR" EXIT
 cd "$WORKDIR"
 
-cat > test.cpp << 'EOF'
-#include <lmdb++.h>
-#include <cstdio>
-
-int main() {
-    printf("lmdb++ compilation OK\n");
-    return 0;
-}
-EOF
-
-g++ -std=c++17 test.cpp -o test -llmdb
-./test
-
-echo "Compilation test passed"
-=======
 echo "Testing lmdbxx compilation..."
 
 cat > test_compile.cpp << 'CPPEOF'
@@ -44,10 +28,11 @@ g++ -std=c++17 test_compile.cpp -o test_compile -llmdb
 if [ -f test_compile ]; then
     echo "✓ Compilation successful"
     ./test_compile
+    ret=$?
     rm -f test_compile test_compile.cpp
     echo "✓ Test passed"
+    exit $ret
 else
     echo "✗ Compilation failed"
     exit 1
 fi
->>>>>>> f263b68eb2664deacae6aa568a2872304382099e

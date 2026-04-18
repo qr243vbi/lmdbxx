@@ -1,3 +1,6 @@
+#UPSTREAM .gitignore
+
+
 .DS_Store
 .doxygen
 *~
@@ -11,6 +14,7 @@ lmdbxx-*.tar.bz2
 lmdbxx-*.tar.gz
 lmdbxx-*.tar.xz
 /testdb/
+<<<<<<< HEAD
 # Debian build artifacts - binary packages
 *.deb
 *.udeb
@@ -70,3 +74,120 @@ build/
 
 # Generated documentation
 .doxygen/
+=======
+
+
+#Debian packaging .gitignore
+
+
+# Debian package build artifacts
+*.deb
+*.dsc
+*.build
+*.buildinfo
+*.changes
+*.upload
+*.ddeb
+*.udeb
+
+# Source packages
+*.orig.tar.*
+*.debian.tar.*
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+
+# debhelper temporary files
+debian/tmp/
+debian/.debhelper/
+debian/*-stamp
+debian/debhelper-build-stamp
+debian/files
+debian/substvars
+debian/*.substvars
+debian/*.log
+
+# Built packages
+debian/libuwebsockets-dev
+
+# Generated documentation
+debian/*.1
+debian/*.3
+debian/*.7
+
+# Backup and temporary files
+*~
+*.bak
+*.swp
+*.swo
+*.orig
+*.rej
+.*.sw?
+*#
+
+# Build directories
+build/
+build-*/
+obj-*/
+.pc/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+*.sublime-*
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test artifacts
+/tmp/
+*.test
+test-results/
+
+# Compilation artifacts
+*.o
+*.a
+*.so
+*.so.*
+*.lo
+*.la
+.libs/
+.deps/
+
+# Core dumps
+core
+core.*
+
+# Patches (if using quilt)
+patches/series
+patches/*~
+
+# autopkgtest artifacts
+autopkgtest-*/
+autopkgtest.log
+
+# pbuilder/cowbuilder
+result/
+
+# uscan
+.uscan/
+
+# Maintainer scripts backups
+debian/*.postinst.debhelper
+debian/*.postrm.debhelper
+debian/*.preinst.debhelper
+debian/*.prerm.debhelper
+
+# Debconf
+debian/*.config.debhelper
+
+debian/liblmdbxx-dev
+
+repomix-output.xml
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360
