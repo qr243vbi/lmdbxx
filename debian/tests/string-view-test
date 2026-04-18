@@ -53,7 +53,7 @@ int main() {
 }
 EOF
 
-g++ -std=c++17 test.cpp -o test -llmdb -I$PWD/include/lmdbxx
+g++ -std=c++17 test.cpp -o test -llmdb "${LMDBXX_FLAGS[@]}"
 ./test
 
 echo "string_view test passed"

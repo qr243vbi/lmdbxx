@@ -32,6 +32,7 @@ Requires:       (ninja or ninja-build)
 %if %{with test}
 BuildRequires:  lmdb-devel
 %check
+declare -a LMDBXX_FLAGS=("-I$PWD/include/lmdbxx")
 . debian/tests/compilation-test
 . debian/tests/string-view-test
 %endif
