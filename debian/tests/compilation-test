@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e
+
+WORKDIR=$(mktemp -d)
+trap "rm -rf $WORKDIR" EXIT
+cd "$WORKDIR"
+
+cat > test.cpp << 'EOF'
+#include <lmdb++.h>
+#include <cstdio>
+
+int main() {
+    printf("lmdb++ compilation OK\n");
+    return 0;
+}
+EOF
+
+g++ -std=c++17 test.cpp -o test -llmdb
+./test
+
+echo "Compilation test passed"

@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+echo "Checking if lmdb++.h is installed..."
+
+if [ -f /usr/include/lmdb++.h ]; then
+    echo "OK: /usr/include/lmdb++.h exists"
+    exit 0
+else
+    echo "FAIL: /usr/include/lmdb++.h not found"
+    exit 1
+fi
