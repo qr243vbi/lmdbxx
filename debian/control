@@ -3,6 +3,9 @@ Section: libdevel
 Priority: optional
 Maintainer: Ruslan Dautov <r.dautoff2016@yandex.ru>
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.7.3.0
 Homepage: https://github.com/hoytech/lmdbxx
@@ -27,6 +30,7 @@ Description: C++17 header-only wrapper for LMDB
  and replaced with std::string_view.
  .
  This package provides the C++ header file.
+<<<<<<< HEAD
 =======
 Build-Depends: debhelper-compat (= 13), liblmdb-dev
 Standards-Version: 4.7.2.0
@@ -44,3 +48,5 @@ Description: C++11/C++17 wrapper for LMDB
  .
  This version includes support for C++17.
 >>>>>>> f263b68eb2664deacae6aa568a2872304382099e
+=======
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360

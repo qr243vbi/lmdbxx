@@ -1,12 +1,16 @@
 #!/usr/bin/make -f
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> f263b68eb2664deacae6aa568a2872304382099e
+=======
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360
 %:
 	dh $@
 
 override_dh_auto_install:
+<<<<<<< HEAD
 <<<<<<< HEAD
 	install -D -m 644 include/lmdbxx/lmdb++.h debian/liblmdbxx-dev/usr/include/lmdb++.h
 =======
@@ -17,3 +21,6 @@ override_dh_auto_install:
 	cp debian/pkg-config/lmdbxx.pc debian/liblmdb++-dev/usr/lib/pkgconfig/
 
 >>>>>>> f263b68eb2664deacae6aa568a2872304382099e
+=======
+	install -D -m 644 include/lmdbxx/lmdb++.h debian/liblmdbxx-dev/usr/include/lmdb++.h
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360

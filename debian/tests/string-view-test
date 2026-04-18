@@ -1,0 +1,59 @@
+#!/bin/bash
+set -e
+
+WORKDIR=$(mktemp -d)
+trap "rm -rf $WORKDIR" EXIT
+cd "$WORKDIR"
+
+cat > test.cpp << 'EOF'
+#include <lmdb++.h>
+#include <string_view>
+#include <cstdio>
+#include <cstdlib>
+#include <sys/stat.h>
+
+int main() {
+    // Create test directory
+    mkdir("testdb", 0755);
+    
+    // Create environment
+    auto env = lmdb::env::create();
+    env.set_mapsize(1UL * 1024UL * 1024UL);
+    env.open("testdb", 0, 0664);
+    
+    // Write with string_view
+    {
+        auto wtxn = lmdb::txn::begin(env);
+        auto dbi = lmdb::dbi::open(wtxn);
+        
+        std::string_view key = "hello";
+        std::string_view val = "world";
+        dbi.put(wtxn, key, val);
+        
+        wtxn.commit();
+    }
+    
+    // Read with string_view
+    {
+        auto rtxn = lmdb::txn::begin(env, nullptr, MDB_RDONLY);
+        auto dbi = lmdb::dbi::open(rtxn);
+        
+        std::string_view key = "hello";
+        std::string_view val;
+        
+        if (dbi.get(rtxn, key, val)) {
+            if (val == "world") {
+                printf("string_view test OK\n");
+                return 0;
+            }
+        }
+    }
+    
+    return 1;
+}
+EOF
+
+g++ -std=c++17 test.cpp -o test -llmdb
+./test
+
+echo "string_view test passed"

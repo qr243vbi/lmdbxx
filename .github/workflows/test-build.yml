@@ -1,0 +1,74 @@
+name: Build Debian Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - test
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build-debian:
+    runs-on: ubuntu-latest
+    container: debian:testing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential debhelper-compat dpkg-dev lintian autopkgtest autodep8 liblmdb-dev g++
+
+      - name: Create upstream tarball
+        run: |
+          VERSION=$(head -1 debian/changelog | sed 's/.*(\(.*\)).*/\1/' | cut -d- -f1)
+          echo "VERSION=$VERSION"
+          cd ..
+          tar --exclude='.git' --exclude='.github' --exclude='debian' -czf "lmdbxx_${VERSION}.orig.tar.gz" \
+            --transform "s,^lmdbxx-deb,lmdbxx-${VERSION}," lmdbxx-deb
+          ls -la *.tar.gz
+
+      - name: Build package
+        run: |
+          rm -rf .github
+          dpkg-buildpackage -us -uc -sa
+
+      - name: List built files
+        run: |
+          echo "=== Files in parent dir ==="
+          ls -la ../
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts
+          cp ../*.deb ../*.dsc ../*.tar.* ../*.changes ../*.buildinfo artifacts/
+          echo "=== Artifacts ==="
+          ls -la artifacts/
+
+      - name: Verify package
+        run: |
+          for deb in artifacts/*.deb; do
+            echo "Package: $deb"
+            dpkg-deb --info "$deb"
+          done
+
+      - name: Run lintian
+        run: lintian -i artifacts/*.changes
+        continue-on-error: true
+
+      - name: Run autopkgtest
+        run: |
+          cd artifacts
+          autopkgtest *.dsc -- null
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-packages
+          path: artifacts/
+          if-no-files-found: error

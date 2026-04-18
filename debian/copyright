@@ -1,6 +1,9 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lmdbxx
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360
 Upstream-Contact: Doug Hoyte <doug@hoytech.com>
 Source: https://github.com/hoytech/lmdbxx
 
@@ -12,6 +15,7 @@ License: Unlicense
 Files: debian/*
 Copyright: 2026 Ruslan Dautov <r.dautoff2016@yandex.ru>
 License: Apache-2.0
+<<<<<<< HEAD
 =======
 Upstream-Contact: hoytech <https://github.com/hoytech/lmdbxx>
 Source: https://github.com/hoytech/lmdbxx
@@ -24,6 +28,8 @@ Files: debian/*
 Copyright: 2025 Ruslan Dautov <r.dautoff2016@yandex.ru>
 License: Unlicense
 >>>>>>> f263b68eb2664deacae6aa568a2872304382099e
+=======
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360
 
 License: Unlicense
  This is free and unencumbered software released into the public domain.
@@ -31,12 +37,16 @@ License: Unlicense
  Anyone is free to copy, modify, publish, use, compile, sell, or
  distribute this software, either in source code form or as a compiled
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360
  binary, for any purpose, commercial or non-commercial, and by any means.
  .
  For more information, please refer to <https://unlicense.org/>
 
 License: Apache-2.0
  On Debian systems, the full text of the Apache License, Version 2.0
+<<<<<<< HEAD
  can be found in `/usr/share/common-licenses/Apache-2.0'.
 =======
  binary, for any purpose, commercial or non-commercial, and by any
@@ -60,3 +70,6 @@ License: Apache-2.0
  .
  For more information, please refer to http://unlicense.org/
 >>>>>>> f263b68eb2664deacae6aa568a2872304382099e
+=======
+ can be found in `/usr/share/common-licenses/Apache-2.0'.
+>>>>>>> 4c4c68addc35f9cc29479f26dfbdc981be0d8360
