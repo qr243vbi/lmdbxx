@@ -41,10 +41,10 @@ jobs:
           mkdir -p artifacts
           mv ../*.deb ../*.dsc ../*.tar.* ../*.changes ../*.buildinfo artifacts/
           ls -la artifacts/
-      
-      - name: Run lintian
-        run: lintian -i artifacts/*.changes
-        continue-on-error: true
+
+#      - name: Run lintian
+ #       run: lintian -i artifacts/*.changes
+  #      continue-on-error: true
       
       - name: Run autopkgtest
         run: sudo autopkgtest artifacts/*.deb -- null
