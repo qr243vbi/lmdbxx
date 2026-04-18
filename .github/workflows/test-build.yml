@@ -59,10 +59,8 @@ jobs:
 
       - name: Run lintian
         run: lintian -i artifacts/*.changes
-        continue-on-error: true
 
       - name: Run autopkgtest
-        continue-on-error: true
         run: |
           cd artifacts
           autopkgtest *.dsc -- null

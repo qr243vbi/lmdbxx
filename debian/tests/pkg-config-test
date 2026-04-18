@@ -17,7 +17,7 @@ CPPEOF
 
 echo "Getting flags from pkg-config..."
 CFLAGS=$(pkg-config --cflags lmdbxx)
-LIBS=$(pkg-config --libs lmdb)
+LIBS=$(pkg-config --libs lmdbxx)
 
 echo "Compiling with flags: $CFLAGS $LIBS"
 g++ -std=c++17 $CFLAGS test_pkgconfig.cpp -o test_pkgconfig $LIBS
