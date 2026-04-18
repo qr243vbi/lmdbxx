@@ -16,7 +16,7 @@ int main() {
 CPPEOF
 
 echo "Getting flags from pkg-config..."
-CFLAGS=$(pkg-config --cflags lmdbxx)
+CFLAGS=$(pkg-config --cflags lmdb++)
 LIBS=$(pkg-config --libs lmdb)
 
 echo "Compiling with flags: $CFLAGS $LIBS"
