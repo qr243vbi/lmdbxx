@@ -13,16 +13,10 @@ on:
 jobs:
   build-debian:
     runs-on: ubuntu-latest
-    container: debian:testing
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Fool sudo
-        run: |
-          echo '(exec "${@}" ; )' > /bin/sudo
-          chmod 755 /bin/sudo
 
       - name: Linux - Install apt dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
@@ -70,7 +64,7 @@ jobs:
       - name: Run autopkgtest
         run: |
           cd artifacts
-          autopkgtest *.dsc -- null
+          sudo autopkgtest *.dsc -- null
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
