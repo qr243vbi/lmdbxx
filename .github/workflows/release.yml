@@ -1,3 +1,8 @@
+name: Release Debian Package
+
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -31,7 +36,7 @@ jobs:
           VERSION=$(head -1 debian/changelog | sed 's/.*(\([^)]*\)).*/\1/' | cut -d- -f1)
           cd ..
           tar --exclude='.git' --exclude='.github' --exclude='debian' -czf lmdbxx_${VERSION}.orig.tar.gz \
-            --transform "s,^lmdbxx-deb,lmdbxx-${VERSION}," lmdbxx-deb
+            --transform "s,^lmdbxx,lmdbxx-${VERSION}," lmdbxx
       
       - name: Build source and binary packages
         run: |

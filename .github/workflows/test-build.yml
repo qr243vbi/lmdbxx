@@ -30,7 +30,7 @@ jobs:
           echo "VERSION=$VERSION"
           cd ..
           tar --exclude='.git' --exclude='.github' --exclude='debian' -czf "lmdbxx_${VERSION}.orig.tar.gz" \
-            --transform "s,^lmdbxx-deb,lmdbxx-${VERSION}," lmdbxx-deb
+            --transform "s,^lmdbxx,lmdbxx-${VERSION}," lmdbxx
           ls -la *.tar.gz
 
       - name: Build package
