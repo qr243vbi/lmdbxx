@@ -33,7 +33,7 @@ jobs:
         echo "VERSION=$VERSION"
 
         cd ..
-        tar --exclude='.git' --exclude='.github' --exclude='debian' --include 'debian/tests/compilation-test'  --include 'debian/tests/string-view-test' \
+        tar --exclude='.git' --exclude='.github' --exclude='libdbxx.spec' \
           -czf "$HOME/rpmbuild/SOURCES/lmdbxx-${VERSION}.tar.gz" \
           --transform "s,^lmdbxx,lmdbxx-${VERSION}," lmdbxx
 
@@ -77,7 +77,7 @@ jobs:
           VERSION=$(head -1 debian/changelog | sed 's/.*(\(.*\)).*/\1/' | cut -d- -f1)
           echo "VERSION=$VERSION"
           cd ..
-          tar --exclude='.git' --exclude='.github' --exclude='debian' -czf "lmdbxx_${VERSION}.orig.tar.gz" \
+          tar --exclude='.git' --exclude='.github' --exclude='debian'  --exclude='libdbxx.spec'  -czf "lmdbxx_${VERSION}.orig.tar.gz" \
             --transform "s,^lmdbxx,lmdbxx-${VERSION}," lmdbxx
           ls -la *.tar.gz
 
