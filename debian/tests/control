@@ -3,9 +3,9 @@ Depends: @, g++, liblmdb-dev
 Restrictions: allow-stderr
 
 Tests: compilation-test
-Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev
+Depends: @, g++, pkgconf, libc6-dev, liblmdb-dev
 Restrictions: allow-stderr
 
 Tests: pkg-config-test
-Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev
+Depends: @, g++, pkgconf, libc6-dev, liblmdb-dev
 Restrictions: superficial
