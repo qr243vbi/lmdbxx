@@ -20,7 +20,8 @@ pkg = import('pkgconfig')
 pkg.generate(
   libraries: lmdbxx_dep,
   name: 'lmdb++',
-  description: 'C++17 wrapper for the LMDB embedded B+ tree database library'
+  description: 'C++17 wrapper for the LMDB embedded B+ tree database library',
+  install_dir: join_paths(get_option('datadir'), 'pkgconfig')
 )
 
 if get_option('examples')
