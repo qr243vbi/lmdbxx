@@ -1,0 +1,28 @@
+Source: lmdbxx
+Section: libdevel
+Priority: optional
+Maintainer: Ruslan Dautov <r.dautoff2016@yandex.ru>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.3.0
+Homepage: https://github.com/hoytech/lmdbxx
+Vcs-Browser: https://github.com/Fordaxx/lmdbxx-deb
+Vcs-Git: https://github.com/Fordaxx/lmdbxx-deb.git
+Rules-Requires-Root: no
+
+Package: liblmdbxx-dev
+Section: libdevel
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends},
+         liblmdb-dev (>= 0.9.18)
+Description: C++17 header-only wrapper for LMDB
+ lmdb++ is a comprehensive C++ wrapper for the LMDB embedded
+ database library, offering both an error-checked procedural
+ interface and an object-oriented resource interface with
+ RAII semantics.
+ .
+ This is the hoytech fork of the original drycpp/lmdbxx.
+ The main difference is that lmdb::val class has been removed
+ and replaced with std::string_view.
+ .
+ This package provides the C++ header file.

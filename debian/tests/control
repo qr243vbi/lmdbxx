@@ -1,0 +1,11 @@
+Tests: installation-test
+Depends: liblmdbxx-dev
+Restrictions: superficial
+
+Tests: compilation-test
+Depends: liblmdbxx-dev, g++, liblmdb-dev
+Restrictions: allow-stderr
+
+Tests: string-view-test
+Depends: liblmdbxx-dev, g++, liblmdb-dev
+Restrictions: allow-stderr

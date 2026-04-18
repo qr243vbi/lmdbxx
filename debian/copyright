@@ -1,0 +1,26 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: lmdbxx
+Upstream-Contact: Doug Hoyte <doug@hoytech.com>
+Source: https://github.com/hoytech/lmdbxx
+
+Files: *
+Copyright: 2015 Arto Bendiken <arto@bendiken.net>
+           2020 Doug Hoyte <doug@hoytech.com>
+License: Unlicense
+
+Files: debian/*
+Copyright: 2026 Ruslan Dautov <r.dautoff2016@yandex.ru>
+License: Apache-2.0
+
+License: Unlicense
+ This is free and unencumbered software released into the public domain.
+ .
+ Anyone is free to copy, modify, publish, use, compile, sell, or
+ distribute this software, either in source code form or as a compiled
+ binary, for any purpose, commercial or non-commercial, and by any means.
+ .
+ For more information, please refer to <https://unlicense.org/>
+
+License: Apache-2.0
+ On Debian systems, the full text of the Apache License, Version 2.0
+ can be found in `/usr/share/common-licenses/Apache-2.0'.
