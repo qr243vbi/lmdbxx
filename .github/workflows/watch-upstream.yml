@@ -17,10 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install devscripts
-        run: |
-          apt-get update
-          apt-get install -y devscripts ca-certificates
+
+      - name: Linux - Install apt dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: devscripts ca-certificates
+          version: 1.0
+
       - name: Run uscan
         id: uscan
         run: |

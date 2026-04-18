@@ -18,19 +18,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Install build dependencies
-        run: |
-          apt-get update
-          apt-get install -y \
-            build-essential \
-            debhelper-compat \
-            dpkg-dev \
-            lintian \
-            autopkgtest \
-            autodep8 \
-            liblmdb-dev \
-            g++
-      
+      - name: Linux - Install apt dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential debhelper-compat dpkg-dev lintian autopkgtest autodep8 liblmdb-dev g++ meson ninja-build liblmdb-dev
+          version: 1.0
+
+
       - name: Create upstream tarball
         run: |
           VERSION=$(head -1 debian/changelog | sed 's/.*(\([^)]*\)).*/\1/' | cut -d- -f1)
