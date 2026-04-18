@@ -1,0 +1,33 @@
+#!/bin/bash
+set -e
+
+echo "Testing lmdbxx with pkg-config..."
+
+cat > test_pkgconfig.cpp << 'CPPEOF'
+#include <lmdbxx/lmdb++.h>
+#include <iostream>
+
+int main() {
+    std::cout << "pkg-config test" << std::endl;
+    lmdb::env env = lmdb::env::create();
+    std::cout << "✓ lmdbxx with pkg-config works" << std::endl;
+    return 0;
+}
+CPPEOF
+
+echo "Getting flags from pkg-config..."
+CFLAGS=$(pkg-config --cflags lmdbxx)
+LIBS=$(pkg-config --libs lmdb)
+
+echo "Compiling with flags: $CFLAGS $LIBS"
+g++ -std=c++17 $CFLAGS test_pkgconfig.cpp -o test_pkgconfig $LIBS
+
+if [ -f test_pkgconfig ]; then
+    echo "✓ Compilation with pkg-config successful"
+    ./test_pkgconfig
+    rm -f test_pkgconfig test_pkgconfig.cpp
+    echo "✓ Test passed"
+else
+    echo "✗ pkg-config test failed"
+    exit 1
+fi

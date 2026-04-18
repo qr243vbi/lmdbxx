@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+<<<<<<< HEAD
 WORKDIR=$(mktemp -d)
 trap "rm -rf $WORKDIR" EXIT
 cd "$WORKDIR"
@@ -19,3 +20,34 @@ g++ -std=c++17 test.cpp -o test -llmdb
 ./test
 
 echo "Compilation test passed"
+=======
+echo "Testing lmdbxx compilation..."
+
+cat > test_compile.cpp << 'CPPEOF'
+#include <lmdb++.h>
+#include <iostream>
+
+int main() {
+    std::cout << "lmdbxx compilation test" << std::endl;
+    
+    // Test basic types
+    lmdb::env env = lmdb::env::create();
+    
+    std::cout << "✓ lmdbxx headers work correctly" << std::endl;
+    return 0;
+}
+CPPEOF
+
+echo "Compiling test program..."
+g++ -std=c++17 test_compile.cpp -o test_compile -llmdb
+
+if [ -f test_compile ]; then
+    echo "✓ Compilation successful"
+    ./test_compile
+    rm -f test_compile test_compile.cpp
+    echo "✓ Test passed"
+else
+    echo "✗ Compilation failed"
+    exit 1
+fi
+>>>>>>> f263b68eb2664deacae6aa568a2872304382099e

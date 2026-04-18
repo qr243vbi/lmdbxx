@@ -11,3 +11,62 @@ lmdbxx-*.tar.bz2
 lmdbxx-*.tar.gz
 lmdbxx-*.tar.xz
 /testdb/
+# Debian build artifacts - binary packages
+*.deb
+*.udeb
+*.ddeb
+
+# Debian build artifacts - source packages
+*.dsc
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.orig.tar.*
+*.debian.tar.*
+
+# Debian build metadata
+*.changes
+*.buildinfo
+*.build
+*.upload
+
+# debhelper temporary files
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
+debian/*.log
+debian/tmp/
+
+# Package-specific build directories
+debian/liblmdb++-dev/
+debian/.debhelper/
+
+# quilt patch management
+.pc/
+*.pc
+
+# autopkgtest artifacts
+debian/tests/*.log
+
+# Editor and IDE files
+*~
+*.swp
+*.swo
+.*.swp
+.*.swo
+*.orig
+.vscode/
+.idea/
+
+# Compiled test binaries
+test_compile
+test_pkgconfig
+testdb/
+
+# Build directories
+build/
+.build/
+
+# Generated documentation
+.doxygen/
