@@ -1,6 +1,6 @@
 #UPSTREAM .gitignore
-
-
+build
+TEMP
 .DS_Store
 .doxygen
 *~

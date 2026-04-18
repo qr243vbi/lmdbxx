@@ -3,11 +3,11 @@ your choosing. To make it available system-wide, you'd normally copy it to
 /usr/local/include. Alternatively, you can embed it directly in your
 project.
 
-If you have `make', a Makefile is provided to facilitate installation:
+If you have `meson', a meson.build is provided to facilitate installation:
 
-    make install
+    meson setup build; meson install -C build	#install
 
-    make uninstall
+    meson compile remove -C build		#uninstall
 
-To facilitate packaging, the Makefile rules honor the DESTDIR and PREFIX
+To facilitate packaging, the meson.build rules honor the DESTDIR and PREFIX
 variables, in case values are provided for those.
