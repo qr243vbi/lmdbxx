@@ -22,7 +22,7 @@ jobs:
       - name: Install apt dependencies
         run: |
           apt-get update -y
-          apt-get install -y debhelper-compat dpkg-dev lintian autopkgtest autodep8 liblmdb-dev g++ meson ninja-build liblmdb-dev build-essential
+          apt-get install -y debhelper-compat dpkg-dev lintian autopkgtest autodep8 liblmdb-dev g++ meson ninja-build liblmdb-dev build-essential pkg-config libc6-dev
 
       - name: Create upstream tarball
         run: |
