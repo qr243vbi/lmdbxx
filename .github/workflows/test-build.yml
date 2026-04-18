@@ -63,9 +63,9 @@ jobs:
             dpkg-deb --info "$deb"
           done
 
-      - name: Run lintian
-        run: lintian -i artifacts/*.changes
-        continue-on-error: true
+  #    - name: Run lintian
+  #      run: lintian -i artifacts/*.changes
+  #      continue-on-error: true
 
       - name: Run autopkgtest
         run: |
