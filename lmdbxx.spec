@@ -28,6 +28,14 @@ BuildArch:      noarch
 Requires:       meson
 Requires:       (ninja or ninja-build)
 
+%bcond_without test
+%if %{with test}
+BuildRequires:  lmdb-devel
+%check
+. debian/tests/compilation-test
+. debian/tests/string-view-test
+%endif
+
 %description
 Header-only %{summary}.
 

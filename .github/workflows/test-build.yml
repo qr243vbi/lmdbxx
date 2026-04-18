@@ -11,7 +11,55 @@ on:
       - master
 
 jobs:
-  build-debian:
+ build-rpm:
+  runs-on: ubuntu-latest
+  container: fedora:latest
+
+  steps:
+    - name: Install RPM build tools
+      run: |
+        dnf install -y rpm-build rpmdevtools gcc-c++ meson ninja-build lmdb-devel pkgconfig tar gzip
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup RPM build tree
+      run: |
+        rpmdev-setuptree
+
+    - name: Create source tarball
+      run: |
+        VERSION=$(head -1 debian/changelog | sed 's/.*(\(.*\)).*/\1/' | cut -d- -f1)
+        echo "VERSION=$VERSION"
+
+        cd ..
+        tar --exclude='.git' --exclude='.github' --exclude='debian' \
+          -czf "$HOME/rpmbuild/SOURCES/lmdbxx-${VERSION}.tar.gz" \
+          --transform "s,^lmdbxx,lmdbxx-${VERSION}," lmdbxx
+
+    - name: Copy spec file
+      run: |
+        cp lmdbxx.spec $HOME/rpmbuild/SPECS/
+
+    - name: Build RPM
+      run: |
+        VERSION=$(head -1 debian/changelog | sed 's/.*(\(.*\)).*/\1/' | cut -d- -f1)
+
+        rpmbuild -ba $HOME/rpmbuild/SPECS/lmdbxx.spec \
+          --define "_version $VERSION"
+
+    - name: Collect artifacts
+      run: |
+        mkdir -p artifacts
+        cp -r $HOME/rpmbuild/RPMS $HOME/rpmbuild/SRPMS artifacts/
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: rpm-packages
+        path: artifacts/
+
+ build-debian:
     runs-on: ubuntu-latest
     container: debian:testing
 
