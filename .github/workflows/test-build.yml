@@ -33,7 +33,7 @@ jobs:
         echo "VERSION=$VERSION"
 
         cd ..
-        tar --exclude='.git' --exclude='.github' --exclude='debian' \
+        tar --exclude='.git' --exclude='.github' --exclude='debian' --include 'debian/tests/compilation-test'  --include 'debian/tests/string-view-test' \
           -czf "$HOME/rpmbuild/SOURCES/lmdbxx-${VERSION}.tar.gz" \
           --transform "s,^lmdbxx,lmdbxx-${VERSION}," lmdbxx
 
