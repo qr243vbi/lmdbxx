@@ -13,10 +13,16 @@ on:
 jobs:
   build-debian:
     runs-on: ubuntu-latest
+    container: debian:testing
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Fool sudo
+        run: |
+          echo '(exec "${@}" ; )' > /bin/sudo
+          chmod 755 /bin/sudo
 
       - name: Linux - Install apt dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest

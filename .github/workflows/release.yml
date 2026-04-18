@@ -12,11 +12,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: debian:testing
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Linux - Install apt dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -42,12 +43,12 @@ jobs:
           mv ../*.deb ../*.dsc ../*.tar.* ../*.changes ../*.buildinfo artifacts/
           ls -la artifacts/
 
-#      - name: Run lintian
- #       run: lintian -i artifacts/*.changes
-  #      continue-on-error: true
+      - name: Run lintian
+        run: lintian -i artifacts/*.changes
+        continue-on-error: true
       
       - name: Run autopkgtest
-        run: sudo autopkgtest artifacts/*.deb -- null
+        run: autopkgtest artifacts/*.deb -- null
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
