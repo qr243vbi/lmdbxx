@@ -13,17 +13,16 @@ on:
 jobs:
   build-debian:
     runs-on: ubuntu-latest
+    container: debian:testing
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Linux - Install apt dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: debhelper-compat dpkg-dev lintian autopkgtest autodep8 liblmdb-dev g++ meson ninja-build liblmdb-dev build-essential:native
-          version: 1.0
-          execute_install_scripts: true
+      - name: Install apt dependencies
+        run: |
+          apt-get update -y
+          apt-get install -y debhelper-compat dpkg-dev lintian autopkgtest autodep8 liblmdb-dev g++ meson ninja-build liblmdb-dev build-essential
 
       - name: Create upstream tarball
         run: |
@@ -66,7 +65,7 @@ jobs:
         continue-on-error: true
         run: |
           cd artifacts
-          sudo autopkgtest *.dsc -- null
+          autopkgtest *.dsc -- null
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
