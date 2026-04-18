@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Tests: installation-test
 Depends: liblmdbxx-dev
 Restrictions: superficial
@@ -9,3 +10,13 @@ Restrictions: allow-stderr
 Tests: string-view-test
 Depends: liblmdbxx-dev, g++, liblmdb-dev
 Restrictions: allow-stderr
+=======
+Tests: compilation-test
+Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev
+
+Tests: installation-test
+Depends: @
+
+Tests: pkg-config-test
+Depends: @, g++, pkg-config, libc6-dev, liblmdb-dev
+>>>>>>> f263b68eb2664deacae6aa568a2872304382099e

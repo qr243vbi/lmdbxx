@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+<<<<<<< HEAD
 echo "Checking if lmdb++.h is installed..."
 
 if [ -f /usr/include/lmdb++.h ]; then
@@ -10,3 +11,39 @@ else
     echo "FAIL: /usr/include/lmdb++.h not found"
     exit 1
 fi
+=======
+echo "Testing lmdbxx installation..."
+
+headers=(
+    "/usr/include/lmdb++.h"
+    "/usr/include/lmdbxx/lmdb++.h"
+)
+
+pkgconfig="/usr/lib/pkgconfig/lmdbxx.pc"
+
+failed=0
+
+for header in "${headers[@]}"; do
+    if [ -f "$header" ]; then
+        echo "✓ Found: $header"
+    else
+        echo "✗ Missing: $header"
+        failed=1
+    fi
+done
+
+if [ -f "$pkgconfig" ]; then
+    echo "✓ Found: $pkgconfig"
+else
+    echo "✗ Missing: $pkgconfig"
+    failed=1
+fi
+
+if [ $failed -eq 0 ]; then
+    echo "✓ All required files installed"
+    exit 0
+else
+    echo "✗ Installation test failed"
+    exit 1
+fi
+>>>>>>> f263b68eb2664deacae6aa568a2872304382099e
