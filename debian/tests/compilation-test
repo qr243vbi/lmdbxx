@@ -23,7 +23,7 @@ int main() {
 CPPEOF
 
 echo "Compiling test program..."
-g++ -std=c++17 test_compile.cpp -o test_compile -llmdb  -Iinclude/lmdbxx
+g++ -std=c++17 test_compile.cpp -o test_compile -llmdb -I$PWD/include/lmdbxx
 
 if [ -f test_compile ]; then
     echo "✓ Compilation successful"
