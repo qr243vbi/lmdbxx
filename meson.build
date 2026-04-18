@@ -14,12 +14,12 @@ lmdbxx_dep = declare_dependency(
 )
 meson.override_dependency('lmdb++', lmdbxx_dep)
 
-install_headers('lmdb++.h')
+install_headers('lmdb++.h', subdir: 'lmdbxx')
 
 pkg = import('pkgconfig')
 pkg.generate(
   libraries: lmdbxx_dep,
-  name: 'lmdb++',
+  name: 'lmdbxx',
   description: 'C++17 wrapper for the LMDB embedded B+ tree database library',
   install_dir: join_paths(get_option('datadir'), 'pkgconfig')
 )
