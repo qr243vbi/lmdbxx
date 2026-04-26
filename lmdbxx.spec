@@ -26,6 +26,7 @@ URL:            https://github.com/qr243vbi/lmdbxx
 Source0:        %{url}/archive/refs/tags/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  meson
+BuildRequires:  gcc-c++
 BuildRequires:  (ninja or ninja-build)
 
 %bcond_without test
