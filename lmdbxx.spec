@@ -25,8 +25,8 @@ Group:          Development/Libraries/C and C++
 URL:            https://github.com/qr243vbi/lmdbxx
 Source0:        %{url}/archive/refs/tags/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 BuildArch:      noarch
-Requires:       meson
-Requires:       (ninja or ninja-build)
+BuildRequires:  meson
+BuildRequires:  (ninja or ninja-build)
 
 %bcond_without test
 %if %{with test}
