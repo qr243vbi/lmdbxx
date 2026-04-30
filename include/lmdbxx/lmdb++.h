@@ -40,6 +40,11 @@
 
 #include <lmdb.h>      /* for MDB_*, mdb_*() */
 
+
+#ifdef LMDB_ENABLE_MUTEX
+#include <mutex>
+#endif
+
 #ifdef LMDBXX_DEBUG
 #include <cassert>     /* for assert() */
 #include <unordered_map>
@@ -1333,8 +1338,30 @@ namespace lmdb {
 class lmdb::env {
 protected:
   MDB_env* _handle{nullptr};
+#ifdef LMDB_ENABLE_MAPSIZE_METRICS
+  LMDBXX_SIZE_T _latest_mapsize = 0;
+#endif
+
+#ifdef LMDB_ENABLE_MUTEX
+  std::mutex env_mutex;
+#endif
 
 public:
+#ifdef LMDB_ENABLE_MUTEX
+  void lock(){
+    env_mutex.lock();
+  }
+  void unlock(){
+    env_mutex.unlock();
+  }
+#endif
+
+#ifdef LMDB_ENABLE_MAPSIZE_METRICS
+  LMDBXX_SIZE_T get_last_mapsize() {
+    return latest_mapsize;
+  };
+#endif
+
   static constexpr unsigned int default_flags = 0;
   static constexpr mode default_mode = 0644; /* -rw-r--r-- */
 
@@ -1473,6 +1500,7 @@ public:
    */
   env& set_mapsize(const LMDBXX_SIZE_T size) {
     lmdb::env_set_mapsize(handle(), size);
+
     return *this;
   }
 
