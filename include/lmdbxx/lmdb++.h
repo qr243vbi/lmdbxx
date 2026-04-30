@@ -1338,28 +1338,15 @@ namespace lmdb {
 class lmdb::env {
 protected:
   MDB_env* _handle{nullptr};
+
+public:
+
 #ifdef LMDB_ENABLE_MAPSIZE_METRICS
-  LMDBXX_SIZE_T _latest_mapsize = 0;
+  LMDBXX_SIZE_T latest_mapsize = 0;
 #endif
 
 #ifdef LMDB_ENABLE_MUTEX
   std::mutex env_mutex;
-#endif
-
-public:
-#ifdef LMDB_ENABLE_MUTEX
-  void lock(){
-    env_mutex.lock();
-  }
-  void unlock(){
-    env_mutex.unlock();
-  }
-#endif
-
-#ifdef LMDB_ENABLE_MAPSIZE_METRICS
-  LMDBXX_SIZE_T get_last_mapsize() {
-    return latest_mapsize;
-  };
 #endif
 
   static constexpr unsigned int default_flags = 0;
@@ -1500,7 +1487,9 @@ public:
    */
   env& set_mapsize(const LMDBXX_SIZE_T size) {
     lmdb::env_set_mapsize(handle(), size);
-
+#ifdef LMDB_ENABLE_MAPSIZE_METRICS
+    latest_mapsize = size;
+#endif
     return *this;
   }
 
